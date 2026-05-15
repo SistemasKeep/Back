@@ -21,4 +21,5 @@ api.post('/facturas/mail/:id', token.validarToken, token.updateToken, validarPer
 api.get('/facturas/getXML/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('FACTURAS', 'L'), validarPermisos.validarPermiso, facturas.getXML);
 api.get('/exportacion/facturas', token.validarToken, token.updateToken, validarPermisos.addPermiso('FACTURAS', 'L'), validarPermisos.validarPermiso, facturas.exportacion);
 
+api.delete('/delRelOc/facturas/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('OC_FACTURAS', 'E'), validarPermisos.validarPermiso, facturas.delRelOC);
 module.exports = api;

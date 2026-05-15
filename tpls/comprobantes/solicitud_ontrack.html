@@ -1,0 +1,202 @@
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Propuesta Comercial</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        .Pagina {
+            padding: 10px;
+            box-sizing: border-box;
+            /* height: 100%; */
+            page-break-after: avoid;
+            page-break-inside: avoid;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            margin: auto;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            font-size: 10px; 
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #16a085;
+            padding-bottom: 10px;
+        }
+
+        .header img {
+            height: 85px;
+        }
+
+        .title {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .highlight {
+            background-color: #16a085;
+            color: white;
+            padding: 3px;
+                border-radius: 0px;
+                text-align: center;
+                font-weight: medium;
+                font-size: 15px;
+        }
+
+         .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            page-break-inside: auto;
+            page-break-before: auto;
+            page-break-after: auto;
+        }
+
+        .table th,
+        
+        .table td {
+            border: 1px solid #ddd;          
+            text-align: left;
+            word-wrap: break-word; /* Permite que el texto largo se divida en varias líneas */
+            white-space: normal; /* Permite saltos de línea dentro de la celda */
+            font-size: 12px; 
+        }
+      
+     
+        .table th {
+            background: #16a085;
+            color: white;
+            width: 30%;
+        }
+
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 10px;
+        }
+            
+        h1{ font-size: 20px;}
+        h2{ font-size: 14px;}
+        h3{ font-size: 12px;}
+    </style>
+</head>
+
+<body>
+    <div class="container Pagina">
+        {{$isCancelada}}
+        <table style="border: medium none ; text-align: left; width: 100%;" border="0" cellpadding="2" cellspacing="2">
+            <tbody>
+                <tr>
+                    <td colspan="2" rowspan="1" style="vertical-align: top;">
+                         <img src="{{$logoMarca}}" style="float:left;" alt="{{$nombreMarca}}" align="left"
+                            height="100" />
+                        <div style="text-align: right; margin: 0px; padding: 0px;font-size: 12px;">Fecha de solicitud: {{$fechaSolicitud}}</div>
+                        <div style="text-align: right; margin: 0px; padding: 0px;font-size: 12px;">Hora de solicitud: {{$horaSolicitud}}</div>
+                        <div style="text-align: right; margin: 0px; padding: 0px;font-size: 12px;">Servicio contratado: {{$servicioContratado}}</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="title">
+            <h1>Solicitud de servicios de seguridad</h1>
+        </div>
+        <h2>I. Datos del solicitante</h2>
+        <div class="highlight">Datos generales</div>
+        <table class="table">
+            <tr>
+                <th>Solicitante:</th>
+                <td>{{$razonSocial}}</td>
+            </tr>
+            <tr>
+                <th>Nombre del contacto solicitante:</th>
+                <td>{{$nombreContacto}}</td>
+            </tr>
+            <tr>
+                <th>Teléfono:</th>
+                <td>{{$telefonoContacto}}</td>
+            </tr>
+            <tr>
+                <th>Extensión:</th>
+                <td>{{$extensionContacto}}</td>
+            </tr>
+            <tr>
+                <th>Teléfono secundario:</th>
+                <td>{{$telefonoSecundarioContacto}}</td>
+            </tr>
+            <tr>
+                <th>Correo electrónico:</th>
+                <td>{{$correoContacto}}</td>
+            </tr>
+        </table>
+        <br>
+        <h2>II. Datos del embarque a monitorear</h2>
+        <div class="highlight">Datos del orígen - Inicio del servicio</div>
+        <table class="table">
+            <tr>
+                <th>País origen:</th>
+                <td>{{$paisOrigen}}</td>
+            </tr>
+            <tr>
+                <th>Estado origen:</th>
+                <td>{{$estadoOrigen}}</td>
+            </tr>
+            <tr>
+                <th>Domicilio de salida del embarque:</th>
+                <td>{{$domicilioOrigen}}</td>
+            </tr>
+            <tr>
+                <th>Fecha estimada de salida:</th>
+                <td>{{$fechaSalida}}</td>
+            </tr>
+            <tr>
+                <th>Hora de salida del embarque:</th>
+                <td>{{$horaSalida}}</td>
+            </tr>
+
+        </table>
+        <br>
+        <div class="highlight">Datos del destino - Fin del servicio</div>
+        <table class="table">
+            <tr>
+                <th>País destino:</th>
+                <td>{{$paisDestino}}</td>
+            </tr>
+            <tr>
+                <th>Estado destino:</th>
+                <td>{{$estadoDestino}}</td>
+            </tr>
+            <tr>
+                <th>Domicilio final o de arribo del embarque:</th>
+                <td>{{$domicilioDestino}}</td>
+            </tr>
+            <tr>
+                <th>Fecha estimada de llegada:</th>
+                <td>{{$fechaDestino}}</td>
+            </tr>
+            <tr>
+                <th>Hora de llegada del embarque:</th>
+                <td>{{$horaDestino}}</td>
+            </tr>
+        </table>
+        <br>
+
+    </div>
+
+</body>
+
+</html>

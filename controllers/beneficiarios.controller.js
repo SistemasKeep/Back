@@ -118,7 +118,27 @@ async function store(req, res){
 		let numKeepro = parametros.keepro == 0 || parametros.keepro == 1 || parametros.keepro == 2 || parametros.keepro == 3 ? parametros.keepro : 0;
 
 		let clienteSelected = undefined
-		const marcaSelected = await db.sequelize.models.marcas.findByPk(1);
+		let marcaSelected = undefined
+		if(parametros.idMarca != undefined){
+			if(typeof parametros.idMarca != 'number'){
+				return res.status(400).send({status:false , msg: `El parametro idMarca debe ser int pero se recibio ${typeof parametros.idMarca}.`});
+			}
+			marcaSelected = await db.sequelize.models.marcas.findByPk(parseInt(parametros.idMarca));
+			if(marcaSelected == undefined){
+				return res.status(400).send({ status: false, msg: `Registro con id: idMarca = ${parametros.idMarca} no encotrado` });
+			}
+			if(marcaSelected.deletedAt != null){
+				return res.status(400).send({ status: false, msg: `Registro con id: idMarca = ${parametros.idMarca} eliminado` });
+			}
+		}else{
+			var whereFindMarcas = {
+				where: {
+					nombre: {[db.Sequelize.Op.like]: `%keepro%`} ,
+					deletedAt: null
+				}
+			}
+			marcaSelected = await db.sequelize.models.marcas.findByPk(whereFindMarcas);
+		}
 
 		try {
 			const paisValid = await db.sequelize.models.paises.findByPk(parametros.idNacionalidad);

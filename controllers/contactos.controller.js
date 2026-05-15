@@ -18,7 +18,21 @@ async function index(req, res) {
 	if(!camposModelo.includes(campoOrden)){
 		campoOrden = 'createdAt';
 	}
-	const filtro = await getFiltro(req.query);
+	const { filtro, idCliente} = await getFiltro(req.query,db.sequelize.models.contactos);
+	if(idCliente !== undefined){
+		const oficinasCliente = await db.sequelize.models.oficinas_cliente.findAll({
+			where: {id_cliente: idCliente}
+		})
+		const oficinas = []
+		for(const ofiCliente of oficinasCliente){
+			oficinas.push(ofiCliente.id_oficina)
+		}
+		if(oficinas.length > 0){
+			filtro.id_oficina = {
+				[db.Sequelize.Op.in]: oficinas
+			};
+		}
+	}
 	const offset = (page - 1) * pageSize;
 	const limit = pageSize;
 
@@ -74,16 +88,46 @@ async function index(req, res) {
 	
 }
 
-async function getFiltro(parametros){
+async function getFiltro(parametros,modelo){
 	var filtro
+	let idCliente = undefined
 	try {
 		filtro = JSON.parse(parametros.filter)
+		try {
+			const keys = Object.keys(filtro)
+			let name = undefined
+			for (const key of keys) {
+				filtro[key] = filtro[key].filter(fil => {
+					if (fil.property === "nombre") {
+						name = fil.value;
+						return false;
+					}
+					if (fil.property === "id_cliente") {
+						idCliente = fil.value;
+						return false;
+					}
+					return true;
+				});
+			}
+			if(filtro.or === undefined){
+				filtro.or = []
+			}
+			if(name !== undefined){
+				const listName = name.trim().split(" ")
+				for(const nombre of listName){
+					filtro.or.push({"property": "nombre","value": nombre,"operator": "like"})
+					filtro.or.push({"property": "apellido_paterno","value": nombre,"operator": "like"})
+					filtro.or.push({"property": "apellido_materno","value": nombre,"operator": "like"})
+				}
+			}
+		} catch (error) {}
 	} catch (error) {
 		filtro = undefined
 	}
 	var eliminados = parametros.eliminados;
-	const Filter = new Filtros({filtros:filtro,eliminados:eliminados})
-	return await Filter.get()
+	const Filter = new Filtros({filtros:filtro,eliminados:eliminados,modelo:modelo})
+	const filtros = await Filter.get()
+	return {filtro:filtros, idCliente:idCliente}
 }
 
 async function store(req, res){

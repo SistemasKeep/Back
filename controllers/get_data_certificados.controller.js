@@ -792,8 +792,7 @@ async function getFiltroOficinasProductos(parametros){
 	var filtro = {deletedAt: null};
 	var busquedaLibre = {}
 	filtro['$marca_agente_oficina.oficina_cliente.id_oficina$'] =  parametros.idOficina
-	const marca = await db.sequelize.models.marcas.findOne();
-	filtro['$marca_agente_oficina.id_marca$'] = marca.id
+	filtro['$marca_agente_oficina.id_marca$'] = {[db.Sequelize.Op.or]: [1]}
 	/*if(parametros.keepro == 0){
 		filtro['$marca_agente_oficina.id_marca$'] = marca.id
 		//filtro['$marca_agente_oficina.id_marca$'] = parametros.idMarca
@@ -833,7 +832,6 @@ async function indexMonedas(req, res) {
 		}
 		return false
 	} 
-	req.query.idMarca = 1
 	const filtro = await getFiltroMonedas(req.query);
 	if(filtro.success !== undefined){
 		return res.status(400).send(filtro)
@@ -996,8 +994,7 @@ async function getAgentesClientes(req, res) {
 		var relaciones = []
 		const findRelaciones = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
 		relaciones = await findRelaciones.getRelaciones()
-		var marca = await db.sequelize.models.marcas.findOne();
-		const registroEncontrado = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:req.query.idCliente, id_marca: marca.id}, include:relaciones,paranoid: false});
+		const registroEncontrado = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:req.query.idCliente}, include:relaciones,paranoid: false});
 		if(registroEncontrado != null){
 			const respuesta = {
 				agente_operativo: registroEncontrado.agente_operativo,
@@ -3146,19 +3143,9 @@ async function getEstadoCuenta(req, res) {
 			var impuestoFactura = 0
 			var descuentoFactura = 0
 			for(const detalle of cxc.factura.factura_detalles){
-				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-				var subtotalCertificado
-				var descuentoCertificado
-				var impuestoCertificado
-				if(pedidoFactura != null){
-				  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-				  subtotalCertificado = certificado.detalle_certificado[0].subtotal
-				  descuentoCertificado = certificado.detalle_certificado[0].descuento_monto
-				  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-				}
-				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotalCertificado)
-				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado)
-				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuentoCertificado)
+				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
+				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
+				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
 			}
 			const totalFactura = parseFloat((subtotalFactura + impuestoFactura - descuentoFactura).toFixed(2))
 			let metodoPago = '';

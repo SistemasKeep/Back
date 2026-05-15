@@ -23,7 +23,7 @@ const pathRutasOperaciones = __dirname + "/routes/operaciones"
 const basenameOperaciones = path.basename(pathRutasOperaciones);
 
 const corsOptions = {
-  origin: process.env.HOSTSERVER,
+  origin: "*",
   methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-token', 'x-api-key', 'x-id-cliente'],
   exposedHeaders: ['x-token'] 

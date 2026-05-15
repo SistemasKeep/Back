@@ -67,14 +67,25 @@ async function sendMailFacturaLocal(idFactura, usuario, listEmails = []){
     var referencia = ''
     var idCliente
     var certificado
+    var servicioMonitoreo
     var idOficina
     if(pedidoFactura != null){
-        certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['cliente','detalle_certificado'],paranoid: false });
-        const cliente = certificado.cliente
-        nombreCliente = cliente.nombre
-        idCliente = cliente.id
-        noOperacion = certificado.no_operacion
-        referencia = (certificado.referencias !== null && certificado.referencias !== '' && certificado.referencias !== undefined ? " // " + certificado.referencias : '')
+        if(pedidoFactura.id_certificado !== null){
+            certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['cliente','detalle_certificado'],paranoid: false });
+            const cliente = certificado.cliente
+            nombreCliente = cliente.nombre
+            idCliente = cliente.id
+            noOperacion = certificado.no_operacion
+            referencia = (certificado.referencias !== null && certificado.referencias !== '' && certificado.referencias !== undefined ? " // " + certificado.referencias : '')
+        }else if(pedidoFactura.id_servicio_ontrack !== null){
+            servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {include:['cliente'],paranoid: false });
+            const cliente = servicioMonitoreo.cliente
+            nombreCliente = cliente.nombre
+            idCliente = cliente.id
+            noOperacion = servicioMonitoreo.no_operacion
+            referencia = (servicioMonitoreo.comentarios !== null && servicioMonitoreo.comentarios !== '' && servicioMonitoreo.comentarios !== undefined ? " // " + servicioMonitoreo.comentarios : '')
+            idOficina = factura.id_oficina
+        }
     }else{
         idOficina = factura.id_oficina
         const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_oficina:idOficina}})
@@ -108,13 +119,23 @@ async function sendMailFacturaLocal(idFactura, usuario, listEmails = []){
         for(const facturaDetalle of factura.factura_detalles){
             let pedidoFacturaData = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
             if(pedidoFacturaData != null){
-                let certificadoData = await db.sequelize.models.certificados.findByPk(pedidoFacturaData.id_certificado, { paranoid: false });
-        
-                tablaReferencia = tablaReferencia + 
-                `<tr>
-                    <td>${certificadoData.no_operacion}</td>
-                    <td>${certificadoData.referencias}</td>
-                </tr>`
+                if(pedidoFacturaData.id_certificado){
+                    let certificadoData = await db.sequelize.models.certificados.findByPk(pedidoFacturaData.id_certificado, { paranoid: false });
+            
+                    tablaReferencia = tablaReferencia + 
+                    `<tr>
+                        <td>${certificadoData.no_operacion}</td>
+                        <td>${certificadoData.referencias}</td>
+                    </tr>`
+                } else if(pedidoFacturaData.id_servicio_ontrack){
+                    const servicioMonitoreoData = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+            
+                    tablaReferencia = tablaReferencia + 
+                    `<tr>
+                        <td>${servicioMonitoreoData.no_operacion}</td>
+                        <td>${servicioMonitoreoData.comentarios}</td>
+                    </tr>`
+                }
             }else{
                 try {
                     const referencia = facturaDetalle.comentarios.substring(facturaDetalle.comentarios.indexOf('Referencia'),facturaDetalle.comentarios.indexOf('Referencia del Cliente')).split(":")[1].split("<br>")[0].trim()
@@ -183,7 +204,6 @@ async function sendMailFacturaLocal(idFactura, usuario, listEmails = []){
 }
 
 async function getListEmails(idCliente,certificado,idOficina,idMarca){
-    idMarca = 1
     const emails = []
 	const parametrosRelacionesMarcaAgentesCliente = [ 'cliente.tipo_cliente','cliente.estado.pais.continente','cliente.oficina_interno', 'marca.domicilio.estado.pais.continente','marca.pais.continente','marca.archivo','marca.dato_facturacion.regimen_fiscal', 'marca.dato_facturacion.pais.continente', 'marca.dato_facturacion.nacionalidad_timbrado.continente','agente_operativo','agente_venta_1','agente_venta_2','inside_sales' ]
 	const findRelacionesMarcaAgentesCliente = new Relaciones(parametrosRelacionesMarcaAgentesCliente,parametrosRelacionesMarcaAgentesCliente,db.sequelize.models)

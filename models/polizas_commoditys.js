@@ -52,6 +52,10 @@ module.exports = function(sequelize, DataTypes) {
       defaultValue: false,
       allowNull: false
     },
+    tarifa: {
+      type: DataTypes.DOUBLE(15,6),
+      allowNull: true
+    },
     createdAt: {
       type: DataTypes.DATE(3),
       allowNull: true

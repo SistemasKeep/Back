@@ -9,7 +9,6 @@ const { sendMailFactura } = require('./facturas_mails.controllers')
 const { buscarActualiarTipoCambioSRes } = require('./tipos_cambio_futuro.controller')
 const fs = require('fs');
 const path = require('path');
-const xml2js = require('xml2js');
 
 async function timbrar(req, res){
 	const parametros = req.body;
@@ -25,7 +24,8 @@ async function timbrar(req, res){
         var razonSocial = undefined
         var marca = undefined
         const storeFacturaDetalles = []
-        const findRelaciones = new Relaciones([ 'certificado', 'factura_detalle.factura' ],[ 'certificado', 'factura_detalle.factura' ],db.sequelize.models)
+        const storeOCs = []
+        const findRelaciones = new Relaciones([ 'certificado', 'factura_detalle.factura', 'servicios_ontrack' ],[ 'certificado', 'factura_detalle.factura', 'servicios_ontrack' ],db.sequelize.models)
         const relaciones = await findRelaciones.getRelaciones()
         let totalFactura = 0
         for(const pedidoFactura of pedidosFactura){
@@ -35,202 +35,451 @@ async function timbrar(req, res){
                     continuar = false
                     return res.status(400).send({status:false , msg: `No se encontro pedido de factura con id: ${pedidoFactura}.` });
                 } else{
-                    const certificado = await db.sequelize.models.certificados.findByPk(registroEncontrado.certificado.id, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado','tipo_cambio_futuro'],paranoid: false });
-                    if(cliente === undefined){
-                        cliente = certificado.id_cliente
-                    }
-                    if(moneda === undefined){
-                        moneda = certificado.id_moneda
-                    }
-                    if(razonSocial === undefined){
-                        razonSocial = certificado.oficina_razon_social.id_razon_social
-                    }
-                    if(marca === undefined){
-                        marca = certificado.id_marca
-                    }
-                    const clienteCert = await db.sequelize.models.clientes.findByPk(certificado.id_cliente, { include:['detalles_cliente'] });
-                    if(clienteCert.detalles_cliente.bloqueado === true){
-                        return res.status(400).send({ status: false, msg: `El cliente se encuentra bloqueado.`});
-                    }
-                    if(registroEncontrado.estatus != "P"){
-                        continuar = false
-                        return res.status(400).send({status:false , msg: `Los pedidos factura no deben estar facturados.` });
-                    } else if(cliente != certificado.id_cliente){
-                        continuar = false
-                        return res.status(400).send({status:false , msg: `El cliente asignado en todos los pedidos factura deben ser el mismo.` });
-                    } else if(moneda != certificado.id_moneda){
-                        continuar = false
-                        return res.status(400).send({status:false , msg: `La moneda asignada en todos los pedidos factura deben ser la misma.` });
-                    } else if(razonSocial != certificado.oficina_razon_social.id_razon_social){
-                        continuar = false
-                        return res.status(400).send({status:false , msg: `La razon social asignada en todos los pedidos factura deben ser la misma.` });
-                    } else if(marca != certificado.id_marca){
-                        continuar = false
-                        return res.status(400).send({status:false , msg: `La marca asignada en todos los pedidos factura deben ser la misma.` });
-                    } else{
-                        const marca = await db.sequelize.models.marcas.findByPk(certificado.id_marca, { include:['pais','domicilio'],paranoid: false });
-                        const moneda = await db.sequelize.models.monedas.findByPk(certificado.id_moneda);
-                        const beneficiario = await db.sequelize.models.beneficiarios.findByPk(certificado.id_beneficiario);
-                        const paisOrigen = await db.sequelize.models.paises.findByPk(certificado.estado_origen.id_pais);
-                        const paisDestino = await db.sequelize.models.paises.findByPk(certificado.estado_destino.id_pais);
-                        const tipoCambio = parseFloat(certificado.tipo_cambio_futuro.tipo_cambio)
-                        const razonSocialAux = await db.sequelize.models.razones_sociales.findByPk(razonSocial, {include: ['metodo_pago','forma_pago','regimen_fiscal']})
-                        if(razonSocialAux.bloqueado == true){
-                            return res.status(400).send({ status: false, msg: "La razón social se encuentra bloqueada" });
+                    if(registroEncontrado.certificado !== null){
+                        const certificado = await db.sequelize.models.certificados.findByPk(registroEncontrado.certificado.id, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado','tipo_cambio_futuro'],paranoid: false });
+                        if(cliente === undefined){
+                            cliente = certificado.id_cliente
                         }
-                        const razonesSocialesValidaciones = await db.sequelize.models.razones_sociales_validaciones.findOne({where:{id_razon_social:razonSocial,id_marca:marca.id}})
-                        let razonValidada = true
-                        if(razonesSocialesValidaciones == null){
-                            const fechaCreacionRS = moment(razonSocialAux.createdAt).tz('America/Mexico_City')
-                            const fechalimiteUsoRS = fechaCreacionRS.add(24, 'hours');
-                            if(fechalimiteUsoRS < moment().tz('America/Mexico_City')){
-                                razonValidada = false
-                            }
+                        if(moneda === undefined){
+                            moneda = certificado.id_moneda
+                        }
+                        if(razonSocial === undefined){
+                            razonSocial = certificado.oficina_razon_social.id_razon_social
+                        }
+                        if(marca === undefined){
+                            marca = certificado.id_marca
+                        }
+                        const clienteCert = await db.sequelize.models.clientes.findByPk(certificado.id_cliente, { include:['detalles_cliente'] });
+                        if(clienteCert.detalles_cliente.bloqueado === true){
+                            return res.status(400).send({ status: false, msg: `El cliente se encuentra bloqueado.`});
+                        }
+                        if(registroEncontrado.estatus != "P"){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `Los pedidos factura no deben estar facturados.` });
+                        } else if(cliente != certificado.id_cliente){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `El cliente asignado en todos los pedidos factura deben ser el mismo.` });
+                        } else if(moneda != certificado.id_moneda){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `La moneda asignada en todos los pedidos factura deben ser la misma.` });
+                        } else if(razonSocial != certificado.oficina_razon_social.id_razon_social){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `La razon social asignada en todos los pedidos factura deben ser la misma.` });
+                        } else if(marca != certificado.id_marca){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `La marca asignada en todos los pedidos factura deben ser la misma.` });
                         } else{
-                            if(razonesSocialesValidaciones.prevalidado !== true && razonesSocialesValidaciones.validado !== true){
+                            const marca = await db.sequelize.models.marcas.findByPk(certificado.id_marca, { include:['pais','domicilio'],paranoid: false });
+                            const moneda = await db.sequelize.models.monedas.findByPk(certificado.id_moneda);
+                            const paisOrigen = await db.sequelize.models.paises.findByPk(certificado.estado_origen.id_pais);
+                            const paisDestino = await db.sequelize.models.paises.findByPk(certificado.estado_destino.id_pais);
+                            const tipoCambio = parseFloat(certificado.tipo_cambio_futuro.tipo_cambio)
+                            const razonSocialAux = await db.sequelize.models.razones_sociales.findByPk(razonSocial, {include: ['metodo_pago','forma_pago','regimen_fiscal']})
+                            if(razonSocialAux.bloqueado == true){
+                                return res.status(400).send({ status: false, msg: "La razón social se encuentra bloqueada" });
+                            }
+                            const razonesSocialesValidaciones = await db.sequelize.models.razones_sociales_validaciones.findOne({where:{id_razon_social:razonSocial,id_marca:marca.id}})
+                            let razonValidada = true
+                            if(razonesSocialesValidaciones == null){
                                 const fechaCreacionRS = moment(razonSocialAux.createdAt).tz('America/Mexico_City')
                                 const fechalimiteUsoRS = fechaCreacionRS.add(24, 'hours');
                                 if(fechalimiteUsoRS < moment().tz('America/Mexico_City')){
                                     razonValidada = false
                                 }
-                                const fechaCreacionRSV = moment(razonesSocialesValidaciones.createdAt).tz('America/Mexico_City')
-                                const fechalimiteUsoRSV = fechaCreacionRSV.add(24, 'hours');
-                                if(fechalimiteUsoRSV >= moment().tz('America/Mexico_City')){
+                            } else{
+                                if(razonesSocialesValidaciones.prevalidado !== true && razonesSocialesValidaciones.validado !== true){
+                                    const fechaCreacionRS = moment(razonSocialAux.createdAt).tz('America/Mexico_City')
+                                    const fechalimiteUsoRS = fechaCreacionRS.add(24, 'hours');
+                                    if(fechalimiteUsoRS < moment().tz('America/Mexico_City')){
+                                        razonValidada = false
+                                    }
+                                }else{
                                     razonValidada = true
                                 }
+                            }
+                            if(!razonValidada){
+                                return res.status(400).send({ status: false, msg: `La razón social no se encuentra validada.`});
+                            }
+                            if(razonSocialAux.metodo_pago.clave.toUpperCase() === 'PPD' && razonSocialAux.forma_pago.clave.toUpperCase() !== '99'){
+                                const formaPago99 = await db.sequelize.models.formas_pago.findOne({where:{ clave: '99' }})
+                                return res.status(400).send({ status: false, msg: `Si la razón social seleccionada cuenta con el método de pago (${razonSocialAux.metodo_pago.clave}) ${razonSocialAux.metodo_pago.descripcion}, por favor asegúrese de que cuente con la forma de pago (${formaPago99.clave}) ${formaPago99.descripcion}`});
+                            }
+                            const nacionalidadTimbrado = await db.sequelize.models.paises.findByPk(razonSocialAux.id_nacionalidad_timbrado, { paranoid: false });
+                            if(nacionalidadTimbrado.clave.toUpperCase() == 'MX'){
+                                if(razonSocialAux.id_regimen_fiscal == null || razonSocialAux.tipo_persona == null){
+                                    return res.status(400).send({ status: false, msg: "El régimen fiscal de la razón social no está configurado."});
+                                }
+                                if(razonSocialAux.regimen_fiscal.tipo_persona.toUpperCase() != razonSocialAux.tipo_persona.toUpperCase() && razonSocialAux.regimen_fiscal.tipo_persona.toUpperCase() != "FM" ){
+                                    return res.status(400).send({ status: false, msg: "El régimen fiscal de la razón social no es válido."});
+                                }
+                            }
+                            const nameTipoCobertura = certificado.tipo_cobertura.toLowerCase().split(" ")
+                            const isRC = nameTipoCobertura.includes('rc')
+                            let producto
+                            if(isRC && certificado.detalle_certificado[0].id_atributo_keepro == null){
+                                producto = await db.sequelize.models.productos.findOne({ where:{descripcion: { [db.Sequelize.Op.like]: `%rc%` }}, include:['producto_unidad_medida'],paranoid: false });
                             }else{
-                                razonValidada = true
+                                const atributoKP = await db.sequelize.models.atributos_keepro.findByPk(certificado.detalle_certificado[0].id_atributo_keepro, { paranoid: false });
+                                const oficinaProducto = await db.sequelize.models.oficinas_productos.findByPk(atributoKP.id_oficina_producto, {include: ['producto']});
+                                producto = await db.sequelize.models.productos.findByPk(oficinaProducto.producto.id,{ include:['producto_unidad_medida'],paranoid: false });
                             }
-                        }
-                        if(!razonValidada){
-                            return res.status(400).send({ status: false, msg: `La razón social no se encuentra validada.`});
-                        }
-                        if(razonSocialAux.metodo_pago.clave.toUpperCase() === 'PPD' && razonSocialAux.forma_pago.clave.toUpperCase() !== '99'){
-                            const formaPago99 = await db.sequelize.models.formas_pago.findOne({where:{ clave: '99' }})
-                            return res.status(400).send({ status: false, msg: `Si la razón social seleccionada cuenta con el método de pago (${razonSocialAux.metodo_pago.clave}) ${razonSocialAux.metodo_pago.descripcion}, por favor asegúrese de que cuente con la forma de pago (${formaPago99.clave}) ${formaPago99.descripcion}`});
-                        }
-                        const nacionalidadTimbrado = await db.sequelize.models.paises.findByPk(razonSocialAux.id_nacionalidad_timbrado, { paranoid: false });
-                        if(nacionalidadTimbrado.clave.toUpperCase() == 'MX'){
-                            if(razonSocialAux.id_regimen_fiscal == null || razonSocialAux.tipo_persona == null){
-                                return res.status(400).send({ status: false, msg: "El régimen fiscal de la razón social no está configurado."});
+                            let subtotal = certificado.detalle_certificado[0].subtotal
+                            let descuento = certificado.detalle_certificado[0].descuento_monto
+                            let impuestoCertificado = certificado.detalle_certificado[0].monto_iva
+                            var minimoVenta = parseFloat(certificado.detalle_certificado[0].minimo_venta)
+                            if(moneda.id == 1){
+                                minimoVenta = minimoVenta * tipoCambio
                             }
-                            if(razonSocialAux.regimen_fiscal.tipo_persona.toUpperCase() != razonSocialAux.tipo_persona.toUpperCase() && razonSocialAux.regimen_fiscal.tipo_persona.toUpperCase() != "FM" ){
-                                return res.status(400).send({ status: false, msg: "El régimen fiscal de la razón social no es válido."});
+                            totalFactura = totalFactura + certificado.detalle_certificado[0].total
+                            const minimoInfo = moneda.id == 1 ? `${(parseFloat(certificado.detalle_certificado[0].minimo_venta)).toLocaleString('es-US', { style: 'currency', currency: "USD" })} USD * TC (${tipoCambio}) = ${( minimoVenta).toLocaleString('es-US', { style: 'currency', currency: "USD" })} ${moneda.clave}<br> Si el valor a facturar (Valor asegurado x Tarifa) es menor al mínimo de venta acordado, se facturará el mínimo de venta.` : `${( minimoVenta).toLocaleString('es-US', { style: 'currency', currency: "USD" })} ${moneda.clave}<br> Si el valor a facturar (Valor asegurado x Tarifa) es menor al mínimo de venta acordado, se facturará el mínimo de venta.`
+                            const registroFacturaDetalles = {
+                                id_pedido_factura: pedidoFactura,
+                                id_moneda: certificado.id_moneda,
+                                id_usuario_registro: req.usuario.id,
+                                id_producto: producto.id,
+                                cantidad: 1,
+                                precio_unitario: subtotal,
+                                subtotal: subtotal,
+                                impuesto: impuestoCertificado,
+                                descuento: descuento,
+                                comentarios: `Referencia ${marca.nombre}:${certificado.no_operacion}<br> 
+                                              Referencia del Cliente: ${(certificado.referencias !== null && certificado.referencias !== '' && certificado.referencias !== undefined ? certificado.referencias : '')}<br> 
+                                              Folio del certificado:  ${certificado.no_seguridad}<br> 
+                                              Tipo de Cobertura:  ${certificado.tipo_cobertura}<br> 
+                                              Valor Asegurado:  ${parseFloat(certificado.suma_asegurada).toLocaleString('es-US', { style: 'currency', currency: "USD" })} ${moneda.clave}<br> 
+                                              Origen:  ${paisOrigen.descripcion}<br> 
+                                              Destino:  ${paisDestino.descripcion}<br> 
+                                              Tarifa:  ${certificado.detalle_certificado[0].tarifa_final_cliente == null ? 0.0 : certificado.detalle_certificado[0].tarifa_final_cliente}%<br> 
+                                              Mínimo de Venta: ${minimoInfo} `,
+                                createdAt: moment().tz('America/Mexico_City')
                             }
+                            storeFacturaDetalles.push(registroFacturaDetalles)
                         }
-                        const nameTipoCobertura = certificado.tipo_cobertura.toLowerCase().split(" ")
-                        const isRC = nameTipoCobertura.includes('rc')
-                        let producto
-                        if(isRC && certificado.detalle_certificado[0].id_atributo_keepro == null){
-                            producto = await db.sequelize.models.productos.findOne({ where:{descripcion: { [db.Sequelize.Op.like]: `%rc%` }}, include:['producto_unidad_medida'],paranoid: false });
-                        }else{
-                            const atributoKeepro = await db.sequelize.models.atributos_keepro.findByPk(certificado.detalle_certificado[0].id_atributo_keepro, { paranoid: false });
-                            const oficinaProducto = await db.sequelize.models.oficinas_productos.findByPk(atributoKeepro.id_oficina_producto, {include: ['producto']});
-                            producto = await db.sequelize.models.productos.findByPk(oficinaProducto.producto.id,{ include:['producto_unidad_medida'],paranoid: false });
+                    }else if(registroEncontrado.servicios_ontrack !== null){
+                        const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(registroEncontrado.servicios_ontrack.id, { include:['oficina_razon_social', 'estado_origen','estado_destino', 'servicios_ontrack_detalles','tipo_cambio_futuro'],paranoid: false });
+                        if(cliente === undefined){
+                            cliente = servicioMonitoreo.id_cliente
                         }
-                        let subtotal = certificado.detalle_certificado[0].subtotal
-                        let descuento = certificado.detalle_certificado[0].descuento_monto
-                        let impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-                        var minimoVenta = parseFloat(certificado.detalle_certificado[0].minimo_venta)
-                        if(moneda.id == 1){
-                            minimoVenta = minimoVenta * tipoCambio
+                        if(moneda === undefined){
+                            moneda = servicioMonitoreo.id_moneda
                         }
-                        totalFactura = totalFactura + certificado.detalle_certificado[0].total
-                        const minimoInfo = moneda.id == 1 ? `${(parseFloat(certificado.detalle_certificado[0].minimo_venta)).toLocaleString('es-US', { style: 'currency', currency: "USD" })} USD * TC (${tipoCambio}) = ${( minimoVenta).toLocaleString('es-US', { style: 'currency', currency: "USD" })} ${moneda.clave}<br> Si el monto resultante de multiplicar el Valor Asegurado por la Tarifa es menor al mínimo de venta acordado, se facturará este último en la moneda correspondiente.` : `${( minimoVenta).toLocaleString('es-US', { style: 'currency', currency: "USD" })} ${moneda.clave}<br> Si el monto resultante de multiplicar el Valor Asegurado por la Tarifa es menor al mínimo de venta acordado, se facturará este último en la moneda correspondiente.`
-
-                        const registroFacturaDetalles = {
-                            id_pedido_factura: pedidoFactura,
-                            id_moneda: certificado.id_moneda,
-                            id_usuario_registro: req.usuario.id,
-                            id_producto: producto.id,
-                            cantidad: 1,
-                            precio_unitario: subtotal,
-                            subtotal: subtotal,
-                            impuesto: impuestoCertificado,
-                            descuento: descuento,
-                            comentarios: `Referencia interna:${certificado.no_operacion}<br> 
-                                          Referencia del Cliente: ${(certificado.referencias !== null && certificado.referencias !== '' && certificado.referencias !== undefined ? certificado.referencias : '')}<br> 
-                                          Tipo de seguro:  ${certificado.tipo_cobertura}<br> 
-                                          Suma asegurada:  ${parseFloat(certificado.suma_asegurada).toLocaleString('es-US', { style: 'currency', currency: "USD" })} ${moneda.clave}<br> 
-                                          Beneficiario:  ${beneficiario.nombre}<br> 
-                                          Pais origen:  ${paisOrigen.descripcion}<br> 
-                                          Pais destino:  ${paisDestino.descripcion}<br> 
-                                          Tarifa final del cliente:  ${certificado.detalle_certificado[0].tarifa_final_cliente == null ? 0.0 : certificado.detalle_certificado[0].tarifa_final_cliente}%<br> 
-                                          Mínimo de venta: ${minimoInfo} `,
-                            createdAt: moment().tz('America/Mexico_City')
+                        if(razonSocial === undefined){
+                            razonSocial = servicioMonitoreo.oficina_razon_social.id_razon_social
                         }
-                        storeFacturaDetalles.push(registroFacturaDetalles)
+                        if(marca === undefined){
+                            marca = servicioMonitoreo.id_marca
+                        }
+                        const clienteCert = await db.sequelize.models.clientes.findByPk(servicioMonitoreo.id_cliente, { include:['detalles_cliente'] });
+                        if(clienteCert.detalles_cliente.bloqueado === true){
+                            return res.status(400).send({ status: false, msg: `El cliente se encuentra bloqueado.`});
+                        }
+                        if(registroEncontrado.estatus != "P"){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `Los pedidos factura no deben estar facturados.` });
+                        } else if(cliente != servicioMonitoreo.id_cliente){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `El cliente asignado en todos los pedidos factura deben ser el mismo.` });
+                        } else if(moneda != servicioMonitoreo.id_moneda){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `La moneda asignada en todos los pedidos factura deben ser la misma.` });
+                        } else if(razonSocial != servicioMonitoreo.oficina_razon_social.id_razon_social){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `La razon social asignada en todos los pedidos factura deben ser la misma.` });
+                        } else if(marca != servicioMonitoreo.id_marca){
+                            continuar = false
+                            return res.status(400).send({status:false , msg: `La marca asignada en todos los pedidos factura deben ser la misma.` });
+                        } else{
+                            const marca = await db.sequelize.models.marcas.findByPk(servicioMonitoreo.id_marca, { include:['pais','domicilio'],paranoid: false });
+                            const moneda = await db.sequelize.models.monedas.findByPk(servicioMonitoreo.id_moneda);
+                            const paisOrigen = await db.sequelize.models.paises.findByPk(servicioMonitoreo.estado_origen.id_pais);
+                            const paisDestino = await db.sequelize.models.paises.findByPk(servicioMonitoreo.estado_destino.id_pais);
+                            const tipoCambio = parseFloat(servicioMonitoreo.tipo_cambio_futuro.tipo_cambio)
+                            const razonSocialAux = await db.sequelize.models.razones_sociales.findByPk(razonSocial, {include: ['metodo_pago','forma_pago','regimen_fiscal']})
+                            if(razonSocialAux.bloqueado == true){
+                                return res.status(400).send({ status: false, msg: "La razón social se encuentra bloqueada" });
+                            }
+                            const razonesSocialesValidaciones = await db.sequelize.models.razones_sociales_validaciones.findOne({where:{id_razon_social:razonSocial,id_marca:marca.id}})
+                            let razonValidada = true
+                            if(razonesSocialesValidaciones == null){
+                                const fechaCreacionRS = moment(razonSocialAux.createdAt).tz('America/Mexico_City')
+                                const fechalimiteUsoRS = fechaCreacionRS.add(24, 'hours');
+                                if(fechalimiteUsoRS < moment().tz('America/Mexico_City')){
+                                    razonValidada = false
+                                }
+                            } else{
+                                if(razonesSocialesValidaciones.prevalidado !== true && razonesSocialesValidaciones.validado !== true){
+                                    const fechaCreacionRS = moment(razonSocialAux.createdAt).tz('America/Mexico_City')
+                                    const fechalimiteUsoRS = fechaCreacionRS.add(24, 'hours');
+                                    if(fechalimiteUsoRS < moment().tz('America/Mexico_City')){
+                                        razonValidada = false
+                                    }
+                                }else{
+                                    razonValidada = true
+                                }
+                            }
+                            if(!razonValidada){
+                                return res.status(400).send({ status: false, msg: `La razón social no se encuentra validada.`});
+                            }
+                            if(razonSocialAux.metodo_pago.clave.toUpperCase() === 'PPD' && razonSocialAux.forma_pago.clave.toUpperCase() !== '99'){
+                                const formaPago99 = await db.sequelize.models.formas_pago.findOne({where:{ clave: '99' }})
+                                return res.status(400).send({ status: false, msg: `Si la razón social seleccionada cuenta con el método de pago (${razonSocialAux.metodo_pago.clave}) ${razonSocialAux.metodo_pago.descripcion}, por favor asegúrese de que cuente con la forma de pago (${formaPago99.clave}) ${formaPago99.descripcion}`});
+                            }
+                            const nacionalidadTimbrado = await db.sequelize.models.paises.findByPk(razonSocialAux.id_nacionalidad_timbrado, { paranoid: false });
+                            if(nacionalidadTimbrado.clave.toUpperCase() == 'MX'){
+                                if(razonSocialAux.id_regimen_fiscal == null || razonSocialAux.tipo_persona == null){
+                                    return res.status(400).send({ status: false, msg: "El régimen fiscal de la razón social no está configurado."});
+                                }
+                                if(razonSocialAux.regimen_fiscal.tipo_persona.toUpperCase() != razonSocialAux.tipo_persona.toUpperCase() && razonSocialAux.regimen_fiscal.tipo_persona.toUpperCase() != "FM" ){
+                                    return res.status(400).send({ status: false, msg: "El régimen fiscal de la razón social no es válido."});
+                                }
+                            }
+                            if(servicioMonitoreo.id_proveedor == null){
+                                continuar = false
+                                return res.status(400).send({status:false , msg: `No se puede generar la factura. No se ha asignado un proveedor al servicio de monitoreo.` });
+                            }
+                            const proveedor = await db.sequelize.models.proveedores.findByPk(servicioMonitoreo.id_proveedor);
+                            const registrosEncontrados = await db.sequelize.models.ordenes_compra.findAll({
+                                where: {
+                                    id_marca: servicioMonitoreo.id_marca
+                                }
+                            });
+                            let subtotal = 0
+                            let impuestos = 0
+                            let descuento = 0
+                            for(const detalle of servicioMonitoreo.servicios_ontrack_detalles){
+                                subtotal = subtotal += detalle.costo_compra
+                                if(proveedor.id_nacionalidad == 96){
+                                    impuestos = impuestos += (detalle.costo_compra * 0.16)
+                                }
+                            }
+                            const dataOC = {
+                                payload: {
+                                    folio: marca.clave + "-" + (registrosEncontrados.length + 1),
+                                    id_moneda: servicioMonitoreo.id_moneda_compra,
+                                    id_proveedor: servicioMonitoreo.id_proveedor,
+                                    id_marca: servicioMonitoreo.id_marca,
+                                    referencia: "",
+                                    subtotal: subtotal,
+                                    impuestos: impuestos,
+                                    descuento: descuento,
+                                    id_usuario_solicita: req.usuario.id,
+                                    id_usuario_registro: req.usuario.id,
+                                    createdAt: moment().tz('America/Mexico_City'),
+                                    updatedAt: moment().tz('America/Mexico_City')
+                                },
+                                detalles: []
+                            }
+                            for(const detalle of servicioMonitoreo.servicios_ontrack_detalles){
+                                if(detalle.costo_compra == 0 || detalle.subtotal == 0){
+                                    continuar = false
+                                    return res.status(400).send({status:false , msg: `No se puede generar la Factura. El subtotal y costo de compra de los detalles de la operación no pueden ser $0.00.` });
+                                }
+                            }
+                            for(const detalle of servicioMonitoreo.servicios_ontrack_detalles){
+                                const fechaFull = moment(servicioMonitoreo.createdAt).tz('America/Mexico_City').format("YYYY-MM-DD HH:mm:ss")
+                                const producto = await db.sequelize.models.productos.findByPk(detalle.id_producto,{ include:['producto_unidad_medida'],paranoid: false });
+                                const registroFacturaDetalles = {
+                                    id_pedido_factura: pedidoFactura,
+                                    id_moneda: servicioMonitoreo.id_moneda,
+                                    id_usuario_registro: req.usuario.id,
+                                    id_producto: producto.id,
+                                    cantidad: detalle.cantidad,
+                                    precio_unitario: parseFloat(detalle.precio_unitario),
+                                    subtotal: parseFloat(detalle.subtotal) * detalle.cantidad,
+                                    impuesto: parseFloat(detalle.monto_iva),
+                                    descuento: parseFloat(detalle.descuento_monto),
+                                    comentarios: `Referencia ${marca.nombre}:${servicioMonitoreo.no_operacion}<br> 
+                                                  Servicio: ${producto.descripcion}<br>
+                                                  Fecha: ${fechaFull.split(" ")[0]}<br>
+                                                  Origen:  ${paisOrigen.descripcion}<br> 
+                                                  Destino:  ${paisDestino.descripcion}<br> 
+                                                 
+                                                  Comentarios: ${(servicioMonitoreo.comentarios !== null && servicioMonitoreo.comentarios !== '' && servicioMonitoreo.comentarios !== undefined ? servicioMonitoreo.comentarios : '')}`,
+                                    createdAt: moment().tz('America/Mexico_City')
+                                }
+                                storeFacturaDetalles.push(registroFacturaDetalles)
+                                totalFactura = totalFactura + parseFloat(detalle.total)
+                                dataOC.detalles.push({
+                                    id_concepto_presupuesto: 1,
+                                    id_producto: detalle.id_producto,
+                                    precio_unitario: detalle.costo_compra,
+                                    cantidad: 1,
+                                    subtotal: detalle.costo_compra,
+                                    impuestos: proveedor.id_nacionalidad == 96 ? (detalle.costo_compra * 0.16) : 0,
+                                    descuentos: 0,
+                                    impuesto_adicional: 0,
+                                    id_usuario_registro: req.usuario.id,
+                                    createdAt: moment().tz('America/Mexico_City'),
+                                    updatedAt: moment().tz('America/Mexico_City')
+                                })
+                            }
+                            storeOCs.push(dataOC)
+                        }
                     }
                 }
             }
         }
-	
+	    let facturaId
         if(continuar){
             const registroEncontrado = await db.sequelize.models.pedidos_factura.findByPk(pedidosFactura[0], {include:relaciones,paranoid: false});
-            const certificado = await db.sequelize.models.certificados.findByPk(registroEncontrado.certificado.id, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
-            const marca = await db.sequelize.models.marcas.findByPk(certificado.id_marca, { include:['pais','domicilio'],paranoid: false });
-            const totalCount = await db.sequelize.models.facturas.count({
-                paranoid: false,
-                where: {
-                    folio: {[db.Sequelize.Op.like]:`%${marca.clave}%`}
-                }
-            });
-            const folio = `${marca.clave}-${(totalCount+1)}`
-            const registroFactura = {
-                id_razon_social: certificado.oficina_razon_social.id_razon_social,
-                id_oficina: certificado.oficina_razon_social.id_oficina,
-                id_marca: certificado.id_marca,
-                id_moneda: certificado.id_moneda,
-                folio: folio,
-                id_usuario_registro: req.usuario.id,
-                createdAt: moment().tz('America/Mexico_City')
-            }
-            const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_cliente:certificado.id_cliente,id_oficina:certificado.oficina_razon_social.id_oficina}});
-            let marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: 1}})
-            const oficina = await db.sequelize.models.oficinas.findByPk(certificado.oficina_razon_social.id_oficina,{include: ['razones_sociales']});
-            //const referencia = await genReferencia(marcaAgenteOficina.clave,certificado.oficina_razon_social.id_razon_social,oficina)
-            registroFactura.referencia = certificado.no_operacion
-            const factura = await db.sequelize.models.facturas.create(registroFactura);
-            const clienteUpdate = await db.sequelize.models.clientes.findByPk(cliente)
-            const clienteDetallesUpdate = await db.sequelize.models.cliente_detalles.findByPk(clienteUpdate.id_detalle_cliente)
-            await clienteDetallesUpdate.update({fecha_ultima_factura: moment().tz('America/Mexico_City')}, { where: { id: clienteDetallesUpdate.id } });
-            for(const registroDetalle of storeFacturaDetalles){
-                registroDetalle.id_factura = factura.id
-                await db.sequelize.models.factura_detalles.create(registroDetalle);
-            }
-            if(marca.pais.clave == "MX"){
-                const cfid = await timbrarLocal(factura.id,req.usuario)
-            } else{
-                for(const pedidoFacturaID of pedidosFactura){
-                    const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(pedidoFacturaID, {include:relaciones,paranoid: false});
-                    const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.certificado.id, { paranoid: false });
-                    const registroCertificadoUpdate = {
-                        estatus: 'F',
-                        updatedAt: moment().tz('America/Mexico_City')
+            if(registroEncontrado.certificado !== null){
+                const certificado = await db.sequelize.models.certificados.findByPk(registroEncontrado.certificado.id, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
+                const marca = await db.sequelize.models.marcas.findByPk(certificado.id_marca, { include:['pais','domicilio'],paranoid: false });
+                const totalCount = await db.sequelize.models.facturas.count({
+                    paranoid: false,
+                    where: {
+                        folio: {[db.Sequelize.Op.like]:`%${marca.clave}%`}
                     }
-                    await certificado.update(registroCertificadoUpdate, { where: { id: pedidoFactura.certificado.id } });
-                    const registroPedidoFacturaUpdate = {
-                        estatus: 'F',
-                        updatedAt: moment().tz('America/Mexico_City')
-                    }
-                    await pedidoFactura.update(registroPedidoFacturaUpdate, { where: { id: pedidoFactura.id } });
+                });
+                const folio = `${marca.clave}-${(totalCount+1)}`
+                const registroFactura = {
+                    id_razon_social: certificado.oficina_razon_social.id_razon_social,
+                    id_oficina: certificado.oficina_razon_social.id_oficina,
+                    id_marca: certificado.id_marca,
+                    id_moneda: certificado.id_moneda,
+                    folio: folio,
+                    id_usuario_registro: req.usuario.id,
+                    createdAt: moment().tz('America/Mexico_City')
                 }
-                sendMailFactura(factura.id, req.usuario)
+                const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_cliente:certificado.id_cliente,id_oficina:certificado.oficina_razon_social.id_oficina}});
+                let marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: certificado.id_marca}})
+                if(marcaAgenteOficina == null){
+                    marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: 3}})
+                    if(marcaAgenteOficina == null){
+                        return res.status(400).send({ status: false, msg: "Error al encontrar la oficina marca"});
+                    }
+                }
+                const oficina = await db.sequelize.models.oficinas.findByPk(certificado.oficina_razon_social.id_oficina,{include: ['razones_sociales']});
+                //const referencia = await genReferencia(marcaAgenteOficina.clave,certificado.oficina_razon_social.id_razon_social,oficina)
+                registroFactura.referencia = certificado.no_operacion
+                const factura = await db.sequelize.models.facturas.create(registroFactura);
+                const clienteUpdate = await db.sequelize.models.clientes.findByPk(cliente)
+                const clienteDetallesUpdate = await db.sequelize.models.cliente_detalles.findByPk(clienteUpdate.id_detalle_cliente)
+                await clienteDetallesUpdate.update({fecha_ultima_factura: moment().tz('America/Mexico_City')}, { where: { id: clienteDetallesUpdate.id } });
+            
+                for(const registroDetalle of storeFacturaDetalles){
+                    registroDetalle.id_factura = factura.id
+                    await db.sequelize.models.factura_detalles.create(registroDetalle);
+                }
+                if(marca.pais.clave == "MX"){
+                    const cfid = await timbrarLocal(factura.id,req.usuario)
+                } else{
+                    for(const pedidoFacturaID of pedidosFactura){
+                        const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(pedidoFacturaID, {include:relaciones,paranoid: false});
+                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.certificado.id, { paranoid: false });
+                        const registroCertificadoUpdate = {
+                            estatus: 'F',
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        await certificado.update(registroCertificadoUpdate, { where: { id: pedidoFactura.certificado.id } });
+                        const registroPedidoFacturaUpdate = {
+                            estatus: 'F',
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        await pedidoFactura.update(registroPedidoFacturaUpdate, { where: { id: pedidoFactura.id } });
+                    }
+                    if(factura.id_marca == 1 ){
+                        sendMailFactura(factura.id, req.usuario)
+                    }
+                }
+                const razonSocial = await db.sequelize.models.razones_sociales.findByPk(factura.id_razon_social, { paranoid: false });
+                let fechaVencimiento = moment().tz('America/Mexico_City');
+                fechaVencimiento = fechaVencimiento.add(razonSocial.dias_credito, 'days');
+                const registroCXC = {
+                    id_factura: factura.id,
+                    saldo: parseFloat((parseFloat(totalFactura)).toFixed(2)) ,
+                    fecha_vencimiento: fechaVencimiento,
+                    id_usuario_registro: req.usuario.id,
+                    createdAt: moment().tz('America/Mexico_City')
+                }
+                await db.sequelize.models.cuentas_por_cobrar.create(registroCXC);
+                facturaId = factura.id
+            }else if(registroEncontrado.servicios_ontrack !== null){
+                const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(registroEncontrado.servicios_ontrack.id, { include:['oficina_razon_social', 'estado_origen','estado_destino', 'servicios_ontrack_detalles','tipo_cambio_futuro'],paranoid: false });
+                const marca = await db.sequelize.models.marcas.findByPk(servicioMonitoreo.id_marca, { include:['pais','domicilio'],paranoid: false });
+                const totalCount = await db.sequelize.models.facturas.count({
+                    paranoid: false,
+                    where: {
+                        folio: {[db.Sequelize.Op.like]:`%${marca.clave}%`}
+                    }
+                });
+                const folio = `${marca.clave}-${(totalCount+1)}`
+                const registroFactura = {
+                    id_razon_social: servicioMonitoreo.oficina_razon_social.id_razon_social,
+                    id_oficina: servicioMonitoreo.oficina_razon_social.id_oficina,
+                    id_marca: servicioMonitoreo.id_marca,
+                    id_moneda: servicioMonitoreo.id_moneda,
+                    folio: folio,
+                    id_usuario_registro: req.usuario.id,
+                    createdAt: moment().tz('America/Mexico_City')
+                }
+                const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_cliente:servicioMonitoreo.id_cliente,id_oficina:servicioMonitoreo.oficina_razon_social.id_oficina}});
+                let marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: servicioMonitoreo.id_marca}})
+                if(marcaAgenteOficina == null){
+                    const marcaId = servicioMonitoreo.id_marca == 2 ? 1 : 1
+                    marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: marcaId}})
+                    if(marcaAgenteOficina == null){
+                        return res.status(400).send({ status: false, msg: "Error al encontrar la oficina marca"});
+                    }
+                }
+                registroFactura.referencia = servicioMonitoreo.no_operacion
+                const factura = await db.sequelize.models.facturas.create(registroFactura);
+                const clienteUpdate = await db.sequelize.models.clientes.findByPk(cliente)
+                const clienteDetallesUpdate = await db.sequelize.models.cliente_detalles.findByPk(clienteUpdate.id_detalle_cliente)
+                await clienteDetallesUpdate.update({fecha_ultima_factura: moment().tz('America/Mexico_City')}, { where: { id: clienteDetallesUpdate.id } });
+            
+                for(const registroDetalle of storeFacturaDetalles){
+                    registroDetalle.id_factura = factura.id
+                    await db.sequelize.models.factura_detalles.create(registroDetalle);
+                }
+                for(const regOC of storeOCs){
+                    regOC.id_factura = factura.id
+                    const ordenCompra = await db.sequelize.models.ordenes_compra.create(regOC.payload);
+                    for(const detalleOC of regOC.detalles){
+                        detalleOC.id_orden_compra = ordenCompra.id
+                        const ocD = await db.sequelize.models.facturas_proveedor_detalles.create(detalleOC);
+                    }
+                    const ocF = await db.sequelize.models.oc_facturas.create({
+                        id_factura: factura.id,
+                        id_orden_compra: ordenCompra.id,
+                        id_usuario_registro: req.usuario.id
+                    });
+                }
+                if(marca.pais.clave == "MX"){
+                    const cfid = await timbrarLocal(factura.id,req.usuario)
+                } else{
+                    for(const pedidoFacturaID of pedidosFactura){
+                        const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(pedidoFacturaID, {include:relaciones,paranoid: false});
+                        const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.servicios_ontrack.id, { paranoid: false });
+                        const registroCertificadoUpdate = {
+                            estatus: 'F',
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        await servicioMonitoreo.update(registroCertificadoUpdate, { where: { id: pedidoFactura.servicios_ontrack.id } });
+                        const registroPedidoFacturaUpdate = {
+                            estatus: 'F',
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        await pedidoFactura.update(registroPedidoFacturaUpdate, { where: { id: pedidoFactura.id } });
+                    }
+                    //ENVIAR FACTURA TRACKING
+                }
+                const razonSocial = await db.sequelize.models.razones_sociales.findByPk(factura.id_razon_social, { paranoid: false });
+                let fechaVencimiento = moment().tz('America/Mexico_City');
+                fechaVencimiento = fechaVencimiento.add(razonSocial.dias_credito, 'days');
+                const registroCXC = {
+                    id_factura: factura.id,
+                    saldo: parseFloat((parseFloat(totalFactura)).toFixed(2)) ,
+                    fecha_vencimiento: fechaVencimiento,
+                    id_usuario_registro: req.usuario.id,
+                    createdAt: moment().tz('America/Mexico_City')
+                }
+                await db.sequelize.models.cuentas_por_cobrar.create(registroCXC);
+                //sendMailCertificadoCobertura(factura.id_razon_social, req.usuario, factura.id_marca)
+                facturaId = factura.id
             }
-            const razonSocial = await db.sequelize.models.razones_sociales.findByPk(factura.id_razon_social, { paranoid: false });
-            let fechaVencimiento = moment().tz('America/Mexico_City');
-            fechaVencimiento = fechaVencimiento.add(razonSocial.dias_credito, 'days');
-            const registroCXC = {
-                id_factura: factura.id,
-                saldo: parseFloat((parseFloat(totalFactura)).toFixed(2)) ,
-                fecha_vencimiento: fechaVencimiento,
-                id_usuario_registro: req.usuario.id,
-                createdAt: moment().tz('America/Mexico_City')
-            }
-            await db.sequelize.models.cuentas_por_cobrar.create(registroCXC);
-            return res.status(200).send({ status: true, msg: "Elemento registrado correctamente", data: {id:factura.id}});
         }
-        //const respuesta = await timbrarLocal(id,req.usuario);
+        return res.status(200).send({ status: true, msg: "Elemento registrado correctamente", data: {id:facturaId}});
     } catch (error) {
 		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
     }
@@ -244,7 +493,7 @@ async function timbrarFactura(req, res){
 	} 
     try {
         const factura = await db.sequelize.models.facturas.findByPk(id, { paranoid: false });
-        const marca = await db.sequelize.models.marcas.findByPk(1, { include:['pais','domicilio'],paranoid: false });
+        const marca = await db.sequelize.models.marcas.findByPk(factura.id_marca, { include:['pais','domicilio'],paranoid: false });
         if(marca.pais.clave.toUpperCase() !== "MX"){
             return res.status(400).send({ status: false, msg: "Por la nacionalidad de la factura, no es necesario timbrarla."});
         }
@@ -436,6 +685,36 @@ async function timbrarManal(req,res){
             }
         }
         const factura = await db.sequelize.models.facturas.create(registro);
+        const dataOC = []
+        const warings = []
+        if(parametros.idMarca == 2){
+            const ordenesCompra = parametros.ordenesCompra ?? []
+            if(ordenesCompra.length > 0 && Array.isArray(ordenesCompra)){
+                for(const oc of ordenesCompra){
+                    var validOC = {}
+                    let validObligatorios = [{campo:'idOrdenCompra', tipo:'model', model:db.sequelize.models.ordenes_compra}]
+                    validOC = await Validaciones.validParametros({body:{idOrdenCompra: oc}}, res,validObligatorios,validOC);
+                    if(!validOC){
+                        return '';
+                    }
+                    const ordenCompra = await db.sequelize.models.ordenes_compra.findByPk(oc)
+                    if(ordenCompra.id_marca != parametros.idMarca){
+                        return res.status(400).send({ status: false, msg: "La orden de compra debe tener la misma marca que la factura. id_orden_compra: " + ordenCompra.id});
+                    }
+                    const ocFacturasTrackingEncontrados = await db.sequelize.models.oc_facturas.findAll({where: {id_orden_compra:ordenCompra.id}});
+                    if(ocFacturasTrackingEncontrados.length > 0){
+                        warings.push( "Las ordenes de compra solo pueden estar ligadas a una sola factura. id_orden_compra: " + ordenCompra.id);
+                    }else{
+                        const ocFacTracking = await db.sequelize.models.oc_facturas.create({
+                            id_factura: factura.id,
+                            id_orden_compra: ordenCompra.id,
+                            id_usuario_registro: req.usuario.id
+                        });
+                        dataOC.push(ocFacTracking)
+                    }
+                }
+            } 
+        }
         const clienteDetallesUpdate = await db.sequelize.models.cliente_detalles.findByPk(clienteCert.id_detalle_cliente)
         await clienteDetallesUpdate.update({fecha_ultima_factura: moment().tz('America/Mexico_City')}, { where: { id: clienteDetallesUpdate.id } });
         var totalFactura = 0
@@ -549,30 +828,31 @@ async function timbrarLocal(id,usuario){
 	for(const facturaDetalle of factura_detalles){
 		const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
         var producto
-        var subtotal
-        var descuento
-        var impuestoCertificado 
         const iva = '0.160000'
         const tipoFactor = 'Tasa'
         const claveIva = "002"
         const isr = '0.100000'
         const claveISR = "001"
         var tipoCambio = 0.0
-        var certificado
+        var comentarios
         if(pedidoFactura != null){
-            certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado','tipo_cambio_futuro'],paranoid: false });
-            const nameTipoCobertura = certificado.tipo_cobertura.toLowerCase().split(" ")
-            const isRC = nameTipoCobertura.includes('rc')
-            if(isRC && certificado.detalle_certificado[0].id_atributo_keepro == null){
-                producto = await db.sequelize.models.productos.findOne({ where:{descripcion: { [db.Sequelize.Op.like]: `%rc%` }}, include:['producto_unidad_medida'],paranoid: false });
-            }else{
-                const atributoKeepro = await db.sequelize.models.atributos_keepro.findByPk(certificado.detalle_certificado[0].id_atributo_keepro, { paranoid: false });
-                const oficinaProducto = await db.sequelize.models.oficinas_productos.findByPk(atributoKeepro.id_oficina_producto, {include: ['producto']});
-                producto = await db.sequelize.models.productos.findByPk(oficinaProducto.producto.id,{ include:['producto_unidad_medida'],paranoid: false });
+            if(pedidoFactura.id_certificado !== null){
+                const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado','tipo_cambio_futuro'],paranoid: false });
+                const nameTipoCobertura = certificado.tipo_cobertura.toLowerCase().split(" ")
+                const isRC = nameTipoCobertura.includes('rc')
+                if(isRC && certificado.detalle_certificado[0].id_atributo_keepro == null){
+                    producto = await db.sequelize.models.productos.findOne({ where:{descripcion: { [db.Sequelize.Op.like]: `%rc%` }}, include:['producto_unidad_medida'],paranoid: false });
+                }else{
+                    const atributoKP = await db.sequelize.models.atributos_keepro.findByPk(certificado.detalle_certificado[0].id_atributo_keepro, { paranoid: false });
+                    const oficinaProducto = await db.sequelize.models.oficinas_productos.findByPk(atributoKP.id_oficina_producto, {include: ['producto']});
+                    producto = await db.sequelize.models.productos.findByPk(oficinaProducto.producto.id,{ include:['producto_unidad_medida'],paranoid: false });
+                }
+                comentarios = certificado.referencias
+            }else if(pedidoFactura.id_servicio_ontrack !== null){
+                producto = await db.sequelize.models.productos.findByPk(facturaDetalle.id_producto,{ include:['producto_unidad_medida'],paranoid: false });
+                const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+                comentarios = servicioMonitoreo.comentarios
             }
-            subtotal = certificado.detalle_certificado[0].subtotal
-            descuento = certificado.detalle_certificado[0].descuento_monto
-            impuestoCertificado = certificado.detalle_certificado[0].monto_iva
         }else{
             producto = await db.sequelize.models.productos.findByPk(facturaDetalle.id_producto,{ include:['producto_unidad_medida'],paranoid: false });
         }
@@ -590,9 +870,9 @@ async function timbrarLocal(id,usuario){
         }
         tipoCambio = '' + tipoCambioSelected.tipo_cambio
         const cantidad = parseFloat(facturaDetalle.cantidad ?? 1)
-        const valorUnitario = parseFloat(facturaDetalle.precio_unitario ?? subtotal)
-        const impuesto = parseFloat(facturaDetalle.impuesto ?? impuestoCertificado)
-        const descuentoGeneral = parseFloat(facturaDetalle.descuento ?? descuento)
+        const valorUnitario = parseFloat(facturaDetalle.precio_unitario ?? 0)
+        const impuesto = parseFloat(facturaDetalle.impuesto ?? 0)
+        const descuentoGeneral = parseFloat(facturaDetalle.descuento ?? 0)
         const retencionConcepto = parseFloat(facturaDetalle.retenciones ?? 0.0)
         descuentoFactura = parseFloat(descuentoGeneral) + parseFloat(descuentoFactura)
         subTotalFactura = subTotalFactura + await round(((valorUnitario * cantidad)),2)
@@ -647,7 +927,7 @@ async function timbrarLocal(id,usuario){
             //retenciones: retencion
         };
         try {
-            let auxReferencia = certificado.referencias
+            let auxReferencia = comentarios ?? ""
             if(auxReferencia != ''){
                 auxReferencia = auxReferencia.replace(/\|/g, "-");
             }
@@ -771,17 +1051,31 @@ async function timbrarLocal(id,usuario){
         for(const facturaDetalle of factura.factura_detalles){
             const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
             if(pedidoFactura != null){
-                const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
-                const datosUpdateDetalle = {
-                    estatus: "F",
-                    updatedAt: moment().tz('America/Mexico_City')
-                }
-                const datosUpdateCertificado = {
-                    estatus: "F",
-                    updatedAt: moment().tz('America/Mexico_City')
-                }
-                await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
-                await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
+                if(pedidoFactura.id_certificado !== null){
+                    const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
+                    const datosUpdateDetalle = {
+                        estatus: "F",
+                        updatedAt: moment().tz('America/Mexico_City')
+                    }
+                    const datosUpdateCertificado = {
+                        estatus: "F",
+                        updatedAt: moment().tz('America/Mexico_City')
+                    }
+                    await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+                    await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
+                } else if(pedidoFactura.id_servicio_ontrack !== null){
+                    const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+                    const datosUpdateDetalle = {
+                        estatus: "F",
+                        updatedAt: moment().tz('America/Mexico_City')
+                    }
+                    const datosUpdateServicioMonitoreo = {
+                        estatus: "F",
+                        updatedAt: moment().tz('America/Mexico_City')
+                    }
+                    await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+                    await servicioMonitoreo.update(datosUpdateServicioMonitoreo, { where: { id: servicioMonitoreo.id } });
+                } 
             }
         }
         sendMailFactura(factura.id, usuario)
@@ -1079,6 +1373,15 @@ async function cancelar(req, res){
                             }
                             elemntosToDelete.push(element)
                         }
+                    }else if(modelo.name == "oc_facturas"){
+                        const elemntosToFind = await modelo.findAll({ where: where });
+                        for(const element of elemntosToFind){
+                            const oc = await await db.sequelize.models.ordenes_compra.findByPk(element.id_orden_compra);
+                            if(oc !== null){
+                                elemntosToDelete.push(oc)
+                            }
+                            elemntosToDelete.push(element)
+                        }
                     }else if(elemntosToFind.length > 0 && !modelosUtilizados.includes(modelo.name) && modelo.name != "factura_detalles"){
                         canDelete = false
                         modelosUtilizados.push(modelo.name)
@@ -1091,7 +1394,7 @@ async function cancelar(req, res){
         return res.status(400).send({ status: false, msg: `No se pudo eliminar. El elemento actualmente está siendo referenciado en los modelos [${modelosUtilizados}].` });
     }
     for(const elemntToDelet of elemntosToDelete){
-        await elemntToDelet.destroy({ where: { id: elemntToDelet.id } })
+        const h = await elemntToDelet.destroy({ where: { id: elemntToDelet.id } })
     }
 	const marca = await db.sequelize.models.marcas.findByPk(factura.id_marca, { include:['pais','domicilio'],paranoid: false });
     if(marca.pais.clave.toLowerCase() == "mx" && factura.id_cfdi != null){
@@ -1159,17 +1462,31 @@ async function cancelar(req, res){
             for(const facturaDetalle of factura.factura_detalles){
                 const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
                 if(pedidoFactura != null){
-                    const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
-                    const datosUpdateDetalle = {
-                        estatus: "P",
-                        updatedAt: moment().tz('America/Mexico_City')
+                    if(pedidoFactura.id_certificado !== null){
+                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
+                        const datosUpdateDetalle = {
+                            estatus: "P",
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        const datosUpdateCertificado = {
+                            estatus: "N",
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+                        await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
+                    }  else if(pedidoFactura.id_servicio_ontrack !== null){
+                        const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+                        const datosUpdateDetalle = {
+                            estatus: "P",
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        const datosUpdateServicioMonitoreo = {
+                            estatus: "N",
+                            updatedAt: moment().tz('America/Mexico_City')
+                        }
+                        await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+                        await servicioMonitoreo.update(datosUpdateServicioMonitoreo, { where: { id: servicioMonitoreo.id } });
                     }
-                    const datosUpdateCertificado = {
-                        estatus: "N",
-                        updatedAt: moment().tz('America/Mexico_City')
-                    }
-                    await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
-                    await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
                 }
                 const facturaDetalles = await db.sequelize.models.factura_detalles.findByPk(facturaDetalle.id);
                 await facturaDetalles.destroy({ where: { id: facturaDetalle.id } });
@@ -1184,17 +1501,31 @@ async function cancelar(req, res){
     for(const facturaDetalle of factura.factura_detalles){
         const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
         if(pedidoFactura != null){
-            const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
-            const datosUpdateDetalle = {
-                estatus: "P",
-                updatedAt: moment().tz('America/Mexico_City')
+            if(pedidoFactura.id_certificado !== null){
+                const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['oficina_razon_social','estado_origen','estado_destino','detalle_certificado'],paranoid: false });
+                const datosUpdateDetalle = {
+                    estatus: "P",
+                    updatedAt: moment().tz('America/Mexico_City')
+                }
+                const datosUpdateCertificado = {
+                    estatus: "N",
+                    updatedAt: moment().tz('America/Mexico_City')
+                }
+                await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+                await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
+            } else if(pedidoFactura.id_servicio_ontrack !== null){
+                const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+                const datosUpdateDetalle = {
+                    estatus: "P",
+                    updatedAt: moment().tz('America/Mexico_City')
+                }
+                const datosUpdateServicioMonitoreo = {
+                    estatus: "N",
+                    updatedAt: moment().tz('America/Mexico_City')
+                }
+                await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+                await servicioMonitoreo.update(datosUpdateServicioMonitoreo, { where: { id: servicioMonitoreo.id } });
             }
-            const datosUpdateCertificado = {
-                estatus: "N",
-                updatedAt: moment().tz('America/Mexico_City')
-            }
-            await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
-            await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
         }
         const facturaDetalles = await db.sequelize.models.factura_detalles.findByPk(facturaDetalle.id);
         await facturaDetalles.destroy({ where: { id: facturaDetalle.id } });
@@ -1438,20 +1769,6 @@ async function getDataDoc(nameFile){
         return undefined
     }
 }
-
-
-async function xmlToJSON(xmlString){
-    const parser = new xml2js.Parser();
-    var xmlJSON = undefined
-    parser.parseString(xmlString, (err, result) => {
-      if (err) {
-        xmlJSON = { status: false, msg: "Error al convertir XML a JSON", error: err.toString()};
-      }
-      xmlJSON = result
-    });
-    return xmlJSON
-}
-
 
 async function cancelarCFDI(req, res){
 	const { id } = req.params;

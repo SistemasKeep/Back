@@ -67,6 +67,11 @@ module.exports = function(sequelize, DataTypes) {
       type: DataTypes.STRING(255),
       allowNull: false
     },
+    can_tc_manual: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
     cliente_prospecto: {
       type: DataTypes.BOOLEAN,
       allowNull: true

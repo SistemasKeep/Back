@@ -291,10 +291,11 @@ async function store(req, res) {
 			if(saldoCxC <= 0){
 				return res.status(400).send({ status: false, cxc: cxc,  msg: "Ya no se puede generar más pagos. El saldo de la cuenta por cobrar es igual o menor a $0.0"});
 			}
+			if(cxc.total < 0.01){
+				return res.status(400).send({ status: false, msg: "No se puede generar el pago. El valor a pagar debe ser mayor a 0.01."});
+			}
 			if(registroPago.id_marca === undefined){
 				registroPago.id_marca = factura.id_marca
-			} else if(registroPago.id_marca !== factura.id_marca){
-				return res.status(400).send({ status: false, msg: "Todas las cuentas por cobrar deber pertenecer a la misma marca"});
 			}
 			if(registroPago.id_razon_social === undefined){
 				registroPago.id_razon_social = factura.id_razon_social
@@ -339,18 +340,26 @@ async function store(req, res) {
 					DoctoRelacionados:[],
 				}
 			}
+			let tipoCambioSelected = undefined
+			const clienteRS = await db.sequelize.models.clientes_razones_sociales.findOne({where:{id_razon_social: factura.id_razon_social},include: ['cliente']})
+			const cliente = clienteRS.cliente;
+			if(parametros.tipoCambioManual !== null && parametros.tipoCambioManual !== undefined && parametros.tipoCambioManual !== "" && parseFloat(parametros.tipoCambioManual) > 0 && cliente.can_tc_manual == true){
+				tipoCambioSelected = {
+					tipo_cambio: parseFloat(parametros.tipoCambioManual)
+				}
+			}else{
+				//Se obtiene el tipo de cambio del dia
+				let fechaString = moment(registroPago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DD')
+				let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
 			
-			//Se obtiene el tipo de cambio del dia
-			let fechaString = moment(registroPago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DD')
-			let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
-		
-			let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
-			if(doit !== true){
-				return doit
-			}
-			const tipoCambioSelected = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaString}});
-			if(tipoCambioSelected == undefined){
-				return res.status(400).send({ status: false, msg: `Tipo de cambio no encontrado`});
+				let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
+				if(doit !== true){
+					return doit
+				}
+				tipoCambioSelected = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaString}});
+				if(tipoCambioSelected == undefined){
+					return res.status(400).send({ status: false, msg: `Tipo de cambio no encontrado`});
+				}
 			}
 			//Se carga el tipo de cambio dependiendo si se paga con mxn o usd
 			dataTimbrado.pagos.pago[monedaCxc].TipoCambioP = monedaPago.clave.toLowerCase() == 'mxn' ? 1 : tipoCambioSelected.tipo_cambio
@@ -385,19 +394,9 @@ async function store(req, res) {
 			var descuentoFactura = 0
 			const ImpuestosDR = []
 			for(const detalle of factura.factura_detalles){
-				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-				var subtotalCertificado
-				var descuentoCertificado
-				var impuestoCertificado
-				if(pedidoFactura != null){
-				  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-				  subtotalCertificado = certificado.detalle_certificado[0].subtotal
-				  descuentoCertificado = certificado.detalle_certificado[0].descuento_monto
-				  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-				}
-				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotalCertificado ?? 0)
-				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado ?? 0)
-				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuentoCertificado ?? 0)
+				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
+				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
+				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
 			}
 			const totalFactura = parseFloat(parseFloat((subtotalFactura ?? 0) + (impuestoFactura ?? 0) - (descuentoFactura ?? 0)).toFixed(2))
 			//Se calcula el porcentajePagado = valor pagado / valor factura
@@ -414,22 +413,12 @@ async function store(req, res) {
 			}
 			let totalBaseImporte = 0
 			for(const detalle of factura.factura_detalles){
-				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-				var subtotalCertificado
-				var descuentoCertificado
-				var impuestoCertificado
-				if(pedidoFactura != null){
-				  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-				  subtotalCertificado = certificado.detalle_certificado[0].subtotal
-				  descuentoCertificado = certificado.detalle_certificado[0].descuento_monto
-				  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-				}
-				const haveImpuesto = parseFloat(detalle.impuesto ?? impuestoCertificado) > 0;
+				const haveImpuesto = parseFloat(detalle.impuesto ?? 0) > 0;
 				
 				
-				let baseDR = parseFloat(parseFloat(((parseFloat(detalle.subtotal ?? subtotalCertificado ?? 0)) - (parseFloat(detalle.descuento ?? descuentoCertificado ?? 0))) * porcentajePagado).toFixed(2))
-				const impuestoDR = !haveImpuesto ? 0 : parseFloat(parseFloat(((parseFloat(detalle.impuesto ?? impuestoCertificado)) * porcentajePagado)).toFixed(2))
-				const totalAux = parseFloat(parseFloat((((parseFloat(detalle.subtotal ?? subtotalCertificado ?? 0)) - (parseFloat(detalle.descuento ?? descuentoCertificado ?? 0))) * porcentajePagado) + ((parseFloat(detalle.impuesto ?? impuestoCertificado ?? 0)) * porcentajePagado)).toFixed(2))
+				let baseDR = parseFloat(parseFloat(((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado).toFixed(2))
+				const impuestoDR = !haveImpuesto ? 0 : parseFloat(parseFloat(((parseFloat(detalle.impuesto ?? 0)) * porcentajePagado)).toFixed(2))
+				const totalAux = parseFloat(parseFloat((((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado) + ((parseFloat(detalle.impuesto ?? impuestoCertificado ?? 0)) * porcentajePagado)).toFixed(2))
 				if(totalAux - (baseDR + impuestoDR) > 0){
 					baseDR = parseFloat(parseFloat(baseDR + totalAux - (baseDR + impuestoDR)).toFixed(2))
 				}
@@ -802,6 +791,7 @@ async function store(req, res) {
 
 async function reTimbrarPago(req, res){
 	const { id } = req.params;
+	const parametros = req.body;
 	if(!Number.isInteger(parseInt(id))){
 		return res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
 	} 
@@ -908,18 +898,26 @@ async function reTimbrarPago(req, res){
 					DoctoRelacionados:[],
 				}
 			}
+			let tipoCambioSelected = undefined
+			const clienteRS = await db.sequelize.models.clientes_razones_sociales.findOne({where:{id_razon_social: factura.id_razon_social},include: ['cliente']})
+			const cliente = clienteRS.cliente;
+			if(parametros.tipoCambioManual !== null && parametros.tipoCambioManual !== undefined && parametros.tipoCambioManual !== "" && parseFloat(parametros.tipoCambioManual) > 0 && cliente.can_tc_manual == true){
+				tipoCambioSelected = {
+					tipo_cambio: parseFloat(parametros.tipoCambioManual)
+				}
+			}else{
+				//Se obtiene el tipo de cambio del dia
+				let fechaString = moment(registroPago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DD')
+				let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
 			
-			//Se obtiene el tipo de cambio del dia
-			let fechaString = moment(pago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DD')
-			let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
-		
-			let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
-			if(doit !== true){
-				return doit
-			}
-			const tipoCambioSelected = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaString}});
-			if(tipoCambioSelected == undefined){
-				return res.status(400).send({ status: false, msg: `Tipo de cambio no encontrado`});
+				let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
+				if(doit !== true){
+					return doit
+				}
+				tipoCambioSelected = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaString}});
+				if(tipoCambioSelected == undefined){
+					return res.status(400).send({ status: false, msg: `Tipo de cambio no encontrado`});
+				}
 			}
 			//Se carga el tipo de cambio dependiendo si se paga con mxn o usd
 			dataTimbrado.pagos.pago[monedaCxc].TipoCambioP = monedaPago.clave.toLowerCase() == 'mxn' ? 1 : tipoCambioSelected.tipo_cambio
@@ -949,19 +947,9 @@ async function reTimbrarPago(req, res){
 			var descuentoFactura = 0
 			const ImpuestosDR = []
 			for(const detalle of factura.factura_detalles){
-				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-				var subtotalCertificado
-				var descuentoCertificado
-				var impuestoCertificado
-				if(pedidoFactura != null){
-				  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-				  subtotalCertificado = certificado.detalle_certificado[0].subtotal
-				  descuentoCertificado = certificado.detalle_certificado[0].descuento_monto
-				  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-				}
-				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotalCertificado)
-				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado)
-				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuentoCertificado)
+				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
+				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
+				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
 			}
 			const totalFactura = parseFloat(parseFloat(subtotalFactura + impuestoFactura - descuentoFactura).toFixed(2))
 			
@@ -974,22 +962,12 @@ async function reTimbrarPago(req, res){
 			}
 			let totalBaseImporte = 0
 			for(const detalle of factura.factura_detalles){
-				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-				var subtotalCertificado
-				var descuentoCertificado
-				var impuestoCertificado
-				if(pedidoFactura != null){
-				  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-				  subtotalCertificado = certificado.detalle_certificado[0].subtotal
-				  descuentoCertificado = certificado.detalle_certificado[0].descuento_monto
-				  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-				}
-				const haveImpuesto = parseFloat(detalle.impuesto ?? impuestoCertificado) > 0;
+				const haveImpuesto = parseFloat(detalle.impuesto ?? 0) > 0;
 				
 				
-				let baseDR = parseFloat(parseFloat(((parseFloat(detalle.subtotal ?? subtotalCertificado)) - (parseFloat(detalle.descuento ?? descuentoCertificado))) * porcentajePagado).toFixed(2))
-				const impuestoDR = !haveImpuesto ? 0 : parseFloat(parseFloat(((parseFloat(detalle.impuesto ?? impuestoCertificado)) * porcentajePagado)).toFixed(2))
-				const totalAux = parseFloat(parseFloat((((parseFloat(detalle.subtotal ?? subtotalCertificado)) - (parseFloat(detalle.descuento ?? descuentoCertificado))) * porcentajePagado) + ((parseFloat(detalle.impuesto ?? impuestoCertificado)) * porcentajePagado)).toFixed(2))
+				let baseDR = parseFloat(parseFloat(((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado).toFixed(2))
+				const impuestoDR = !haveImpuesto ? 0 : parseFloat(parseFloat(((parseFloat(detalle.impuesto ?? 0)) * porcentajePagado)).toFixed(2))
+				const totalAux = parseFloat(parseFloat((((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado) + ((parseFloat(detalle.impuesto ?? impuestoCertificado)) * porcentajePagado)).toFixed(2))
 				if(totalAux - (baseDR + impuestoDR) > 0){
 					baseDR = parseFloat(parseFloat(baseDR + totalAux - (baseDR + impuestoDR)).toFixed(2))
 				}

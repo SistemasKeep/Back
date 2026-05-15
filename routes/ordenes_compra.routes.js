@@ -19,5 +19,6 @@ api.get('/ordenesCompra/pdf/:id', token.validarToken, token.updateToken, validar
 api.post('/ordenesCompra/mail/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('ORDENES_COMPRA', 'L'), validarPermisos.validarPermiso, ordenesCompraMail.sendOrdenCompra);
 
 api.get('/exportacion/ordenesCompra', token.validarToken, token.updateToken, validarPermisos.addPermiso('ORDENES_COMPRA', 'L'), validarPermisos.validarPermiso, ordenesCompra.exportacion);
+api.post('/relacionarOcFactura', token.validarToken, token.updateToken, validarPermisos.addPermiso('OC_FACTURAS', 'C'), validarPermisos.validarPermiso, ordenesCompra.relacionarOcFactura);
 module.exports = api;
 

@@ -202,27 +202,17 @@ async function antiguedadSaldosCxC(idRazonSocial, cliente) {
 	
 				element.montoOriginal = 0
                 if( element.factura.factura_detalles.length > 0){
-				for(const detalle of element.factura.factura_detalles){
-					const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura);
-					var impuestoCertificado
-					var subtotal
-					var descuento
-					if(pedidoFactura != null){
-					  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-					  subtotal = certificado.detalle_certificado[0].subtotal
-					  descuento = certificado.detalle_certificado[0].descuento_monto
-					  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-					}
-					const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-					const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-					const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
-					const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
-					let subtotalFactura = (valorUnitario * cantidad )
-					let descuentoFactura = descuentoGeneral
-					let impuestoFactura = impuesto
-					element.montoOriginal = parseFloat(element.montoOriginal) + (parseFloat(subtotalFactura) + parseFloat(impuestoFactura) - parseFloat(descuentoFactura))
-				}
-            }
+                    for(const detalle of element.factura.factura_detalles){
+                        const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+                        const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+                        const impuesto = parseFloat(detalle.impuesto ?? 0)
+                        const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
+                        let subtotalFactura = (valorUnitario * cantidad )
+                        let descuentoFactura = descuentoGeneral
+                        let impuestoFactura = impuesto
+                        element.montoOriginal = parseFloat(element.montoOriginal) + (parseFloat(subtotalFactura) + parseFloat(impuestoFactura) - parseFloat(descuentoFactura))
+                    }
+                }
 				element.montoOriginal = parseFloat(element.montoOriginal).toFixed(2)
 				
                 element.cliente = cliente.nombre;

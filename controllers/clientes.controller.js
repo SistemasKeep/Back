@@ -209,8 +209,7 @@ async function index(req, res) {
 				var relacionesAgentes = []
 				const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
 				relacionesAgentes = await findRelacionesAgentes.getRelaciones()
-				var marca = await db.sequelize.models.marcas.findOne();
-				const agentesClienteData = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:element.id, id_marca: marca.id}, include:relacionesAgentes,paranoid: false});
+				const agentesClienteData = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:element.id}, include:relacionesAgentes,paranoid: false});
 				if(agentesClienteData != null){
 					const agentes = {
 						agente_operativo: agentesClienteData.agente_operativo,
@@ -285,7 +284,8 @@ async function store(req, res){
 		}
 		const validosOpcionales =[{campo:'idOficinaInterno',tipo:'model',model:db.sequelize.models.oficinas},
 								  {campo:'idCategoriaCliente', tipo:'model',model:db.sequelize.models.categorias_cliente},
-								  {campo:'clienteProspecto',tipo:'boolean'}]
+								  {campo:'clienteProspecto',tipo:'boolean'},
+								  {campo:'canTcManual',tipo:'boolean'}]
 		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(registro,false,validosOpcionales,parametros,res)
 		if(dataValidarOpcionales == undefined){
 			return undefined;
@@ -517,6 +517,13 @@ async function show(req, res){
 					}
 					element.agentes_cliente = agentes
 				}
+				const agentesMac = await db.sequelize.models.marca_agentes_clientes.findAll({where:{id_cliente:id}, include:relacionesAgentes,paranoid: false});
+				element.marca_agentes_clientes = []
+				for(const dataAux of agentesMac){
+					if(dataAux.deletedAt == null){
+						element.marca_agentes_clientes.push(dataAux)
+					}
+				}
 				
 				const oficinasClienteData = await db.sequelize.models.oficinas_cliente.findAll({where:{id_cliente:element.id}})
 				const oficinasCliente = []
@@ -562,7 +569,8 @@ async function update(req, res){
 								   {campo:'nombre', tipo:'string',largo:255,textoCase:"up"},
 								   {campo:'idOficinaInterno',tipo:'model',model:db.sequelize.models.oficinas},
 								   {campo:'idCategoriaCliente', tipo:'model',model:db.sequelize.models.categorias_cliente},
-								   {campo:'clienteProspecto',tipo:'boolean'}]
+								   {campo:'clienteProspecto',tipo:'boolean'},
+								   {campo:'canTcManual',tipo:'boolean'}]
 		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(datosUpdate,false,validosOpcionales,parametros,res)
 		if(dataValidarOpcionales == undefined){
 			return undefined;
@@ -980,7 +988,6 @@ async function exportar(req, res) {
 			const findRelaciones = new Relaciones(parametrosRelaciones[req.query.perfil],parametrosRelaciones[req.query.perfil],db.sequelize.models);
 			relaciones = await findRelaciones.getRelaciones();
 		}
-		console.log(filtro)
 		const docs = await db.sequelize.models.clientes.findAll({
 			paranoid: false,
 			page: 1,
@@ -1040,8 +1047,7 @@ async function exportar(req, res) {
 			var relacionesAgentes = [];
 			const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models);
 			relacionesAgentes = await findRelacionesAgentes.getRelaciones();
-			//var marca = await db.sequelize.models.marcas.findOne(whereFindMarcas);
-			const agentesClienteData = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:element.id, id_marca: 1}, include:relacionesAgentes,paranoid: false});
+			const agentesClienteData = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:element.id}, include:relacionesAgentes,paranoid: false});
 			if(agentesClienteData != null){
 				const agentes = {
 					agente_operativo: agentesClienteData.agente_operativo != null ? agentesClienteData.agente_operativo.nombre : null,

@@ -17,6 +17,14 @@ module.exports = function(sequelize, DataTypes) {
       onUpdate: 'CASCADE',
       onDelete: 'SET NULL'
     },
+    id_servicio_ontrack: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+      references: {
+        model: 'servicios_ontrack',
+        key: 'id'
+      }
+    },
     estatus: {
       type: DataTypes.ENUM('P', 'F'),
       allowNull: false,
@@ -63,6 +71,13 @@ module.exports = function(sequelize, DataTypes) {
         using: "BTREE",
         fields: [
           { name: "id_certificado" },
+        ]
+      },
+      {
+        name: "pedidos_factura_id_servicio_ontrack_foreign_idx",
+        using: "BTREE",
+        fields: [
+          { name: "id_servicio_ontrack" },
         ]
       },
       {

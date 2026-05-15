@@ -11,7 +11,7 @@ exports.validarMantenimiento =async function(req, res, next){
             fecha_fin: {
                 [db.Sequelize.Op.gte]: fechaActual,
             }
-          }
+        }
     }	
     const rutaSolicitada = req.url;
     if (rutaSolicitada.includes('mantenimientoKeepro')) {

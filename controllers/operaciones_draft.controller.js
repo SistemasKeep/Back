@@ -520,12 +520,37 @@ async function indexRazonesSociales(req, res) {
 					}
 				}
 			}
-			const element = doc.toJSON()
-			if(razonValidada === true){
-				element.validada = true
-			}else{
-				element.validada = false
+			const razonSocialValidacionOnTrack = await db.sequelize.models.razones_sociales_validaciones.findOne({where:{id_razon_social:doc.id, id_marca: 2}})
+			let razonValidadaOnTrack = true
+			if(razonSocialValidacionOnTrack == null){
+				const fechaCreacionRSOnTrack = moment(doc.createdAt).tz('America/Mexico_City')
+				const fechalimiteUsoRSOnTrack = fechaCreacionRSOnTrack.add(24, 'hours');
+				if(fechalimiteUsoRSOnTrack < moment().tz('America/Mexico_City')){
+					razonValidadaOnTrack = false
+				}
+			} else{
+				if((razonSocialValidacionOnTrack.id_marca != 2) ){
+					razonValidadaOnTrack = false
+				} else{
+					if(razonSocialValidacionOnTrack.prevalidado !== true && razonSocialValidacionOnTrack.validado !== true){
+						const fechaCreacionRSOnTrack = moment(doc.createdAt).tz('America/Mexico_City')
+						const fechalimiteUsoRSOnTrack = fechaCreacionRSOnTrack.add(24, 'hours');
+						if(fechalimiteUsoRSOnTrack < moment().tz('America/Mexico_City')){
+							razonValidadaOnTrack = false
+						}
+						const fechaCreacionRSVOnTrack = moment(razonSocialValidacionOnTrack.createdAt).tz('America/Mexico_City')
+						const fechalimiteUsoRSVOnTrack = fechaCreacionRSVOnTrack.add(24, 'hours');
+						if(fechalimiteUsoRSVOnTrack >= moment().tz('America/Mexico_City')){
+							razonValidadaOnTrack = true
+						}
+					}else{
+						razonValidadaOnTrack = true
+					}
+				}
 			}
+			const element = doc.toJSON()
+			element.validada = razonValidada === true
+			element.validadaOnTrack = razonValidadaOnTrack === true
 			if(req.query.keepro === 3 ){
 				element.usuario_registro = undefined
 				element.pais = undefined
@@ -2869,19 +2894,9 @@ async function getEstadoCuenta(req, res) {
 			var impuestoFactura = 0
 			var descuentoFactura = 0
 			for(const detalle of cxc.factura.factura_detalles){
-				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, {paranoid: false });
-				var subtotalCertificado
-				var descuentoCertificado
-				var impuestoCertificado
-				if(pedidoFactura != null){
-				  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-				  subtotalCertificado = certificado.detalle_certificado[0].subtotal
-				  descuentoCertificado = certificado.detalle_certificado[0].descuento_monto
-				  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-				}
-				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotalCertificado)
-				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado)
-				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuentoCertificado)
+				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
+				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
+				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
 			}
 			const totalFactura = parseFloat((subtotalFactura + impuestoFactura - descuentoFactura).toFixed(2))
 			let metodoPago = '';

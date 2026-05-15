@@ -159,7 +159,7 @@ async function remplaceData(ordenCompra,tpl){
     tpl = tpl.replace(/\{\{\$nombreProveedor\}\}/g, ordenCompra.proveedor.nombre);
     tpl = tpl.replace(/\{\{\$direccionProveedor\}\}/g, domicilioProveedor);
     tpl = tpl.replace(/\{\{\$rfcProveedor\}\}/g, ordenCompra.proveedor.rfc);
-    tpl = tpl.replace(/\{\{\$telefonoProveedor\}\}/g, `${ordenCompra.proveedor.telefono}${ordenCompra.proveedor.telefono_2.trim() != '' ? `-${ordenCompra.proveedor.telefono_2.trim()}` : ''}`);
+    tpl = tpl.replace(/\{\{\$telefonoProveedor\}\}/g, `${ordenCompra.proveedor.telefono}${ ordenCompra.proveedor.telefono_2 == null ? "" : ordenCompra.proveedor.telefono_2.trim() != '' ? `-${ordenCompra.proveedor.telefono_2.trim()}` : ''}`);
     tpl = tpl.replace(/\{\{\$emailProveedor\}\}/g, ordenCompra.proveedor.email);
     const detallesOrdenesCompra = await db.sequelize.models.facturas_proveedor_detalles.findAll({where:{id_orden_compra: ordenCompra.id}}) 
     const dataDetalles = await getDocumentosRAI(detallesOrdenesCompra)
@@ -216,7 +216,7 @@ async function remplaceData(ordenCompra,tpl){
     tpl = tpl.replace(/\{\{\$descuento\}\}/g, parseFloat(descuento).toLocaleString('es-US', { style: 'currency', currency: 'USD',  minimumFractionDigits: 2, maximumFractionDigits: 2  }));
     tpl = tpl.replace(/\{\{\$impuestos\}\}/g, parseFloat(impuestos).toLocaleString('es-US', { style: 'currency', currency: 'USD',  minimumFractionDigits: 2, maximumFractionDigits: 2  }));
     tpl = tpl.replace(/\{\{\$total\}\}/g, parseFloat(total).toLocaleString('es-US', { style: 'currency', currency: 'USD',  minimumFractionDigits: 2, maximumFractionDigits: 2  }));
-    tpl = tpl.replace(/\{\{\$comentarios\}\}/g, ordenCompra.comentarios);
+    tpl = tpl.replace(/\{\{\$comentarios\}\}/g, ordenCompra.comentarios ?? "");
 
     return tpl
 }

@@ -64,6 +64,5 @@ api.get('/getBeneficiario/:id', token.validarToken, token.updateToken, validarPe
 api.get('/exportacion/certificados', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso,  certificados.exportacion);
 api.get('/exportacion/antiguedadSaldosCxC', token.validarToken, token.updateToken, validarPermisos.addPermiso('CUENTAS_POR_COBRAR', 'L'), validarPermisos.validarPermiso, cuentasPorCobrar.antiguedadSaldosCxC);
 
-api.post('/viewPdf', genPdf.genPdf)
 api.get('/getZip/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, facturas.getZip);
 module.exports = api;

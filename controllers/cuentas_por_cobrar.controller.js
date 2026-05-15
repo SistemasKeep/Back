@@ -260,9 +260,7 @@ async function exportar(req, res) {
 
 		const docs = await db.sequelize.models.cuentas_por_cobrar.findAll({
 			paranoid: false,
-			page: 1,
 			include: relaciones,
-			paginate: 10000,
 			order: [[campoOrden, orden]],
 			where: filtro
 		});
@@ -273,6 +271,7 @@ async function exportar(req, res) {
 			if(req.query.perfil == 'all'){
 				const listRel = [ 
 					'factura_detalles.pedido_factura.certificado',
+					'factura_detalles.pedido_factura.servicios_ontrack',
 					'factura_detalles.producto.moneda_compra',
 					'factura_detalles.producto.moneda_venta',
 					'factura_detalles.producto.pais',
@@ -311,7 +310,16 @@ async function exportar(req, res) {
 				element.saldoVencido = '';
 				element.referenciaCliente = '';
 
-				element.montoOriginal = parseFloat(element.factura.factura_detalles[0].subtotal) + parseFloat(element.factura.factura_detalles[0].impuesto) - parseFloat(element.factura.factura_detalles[0].descuento);
+				let saldoOriginal = 0
+				for(const detalle of element.factura.factura_detalles){
+					saldoOriginal = saldoOriginal + (parseFloat(detalle.subtotal || 0) + parseFloat(detalle.impuesto || 0) - parseFloat(detalle.descuento || 0));
+				}
+				element.montoOriginal = saldoOriginal
+
+				if (!element.factura || !element.factura.razon_social) {
+					continue; // Saltar este elemento y continuar con el siguiente
+				}
+
 				const clienteRazonSocial = await db.sequelize.models.clientes_razones_sociales.findOne({
 					where: {
 						id_razon_social: element.factura.razon_social.id
@@ -336,10 +344,33 @@ async function exportar(req, res) {
 				}
 				const diasVencimiento = fechaActual.diff(fechaVencimiento, 'days');
 				element.diasVencimiento = diasVencimiento+1;
-				const ultimafacturaDetalles = element.factura.factura_detalles.length-1;
-				const pedidoFactura = element.factura.factura_detalles[ultimafacturaDetalles].pedido_factura;
-				if(pedidoFactura != null && pedidoFactura != undefined){
-					element.referenciaCliente = pedidoFactura.certificado.referencias != null ? pedidoFactura.certificado.referencias : '';
+
+				if (element.factura && element.factura.factura_detalles && element.factura.factura_detalles.length > 0) {
+					const ultimafacturaDetalles = element.factura.factura_detalles.length - 1;
+					const detalleFactura = element.factura.factura_detalles[ultimafacturaDetalles];
+					if (detalleFactura && detalleFactura.pedido_factura) {
+						const pedidoFactura = detalleFactura.pedido_factura;
+						if (pedidoFactura.certificado !== null) {
+							element.referenciaCliente = pedidoFactura.certificado.referencias ?? "";
+						} else if (pedidoFactura.servicios_ontrack !== null) {
+							element.referenciaCliente = pedidoFactura.servicios_ontrack.comentarios ?? "";
+						} else {
+							element.referenciaCliente = '';
+						}
+					} else {
+						if (element.factura.id_marca == 2) {
+							element.referenciaCliente = element.factura.comentarios != null ? element.factura.comentarios : ""
+						} else {
+							element.referenciaCliente = '';
+						}
+					}
+				} else {
+					// Si no existen `factura_detalles` o está vacío, asignar un valor predeterminado
+					if (element.factura.id_marca == 1) {
+						element.referenciaCliente = element.factura.comentarios != null ? element.factura.comentarios : ""
+					} else {
+						element.referenciaCliente = '';
+					}
 				}
 				element.metodo_pago = element.factura.cfdi != null ? element.factura.cfdi.metodo_pago.descripcion : 'N/A';
 				element.forma_pago = element.factura.cfdi != null ? element.factura.cfdi.forma_pago.descripcion : 'N/A';
@@ -391,7 +422,7 @@ async function exportar(req, res) {
 		
 		return await reporte.gerReporteOneSheet(res,req);
 	} catch (error) {
-		return res.status(500).json({ success: false, error: 'Error interno del servidor', error: error.toString() });
+		console.log(error)
 	}
 	
 }
@@ -437,9 +468,7 @@ async function antiguedadSaldosCxC(req, res) {
 
 		const docs = await db.sequelize.models.cuentas_por_cobrar.findAll({
 			paranoid: false,
-			page: 1,
 			include: relaciones,
-			paginate: 10000,
 			order: [['createdAt', orden]],
 			where: filtro
 		});
@@ -450,6 +479,7 @@ async function antiguedadSaldosCxC(req, res) {
 			if(element.factura != null){
 				const listRel = [ 
 					'factura_detalles.pedido_factura.certificado',
+					'factura_detalles.pedido_factura.servicios_ontrack',
 					'factura_detalles.producto.moneda_compra',
 					'factura_detalles.producto.moneda_venta',
 					'factura_detalles.producto.pais',
@@ -488,19 +518,9 @@ async function antiguedadSaldosCxC(req, res) {
 	
 				element.montoOriginal = 0
 				for(const detalle of element.factura.factura_detalles){
-					const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura);
-					var impuestoCertificado
-					var subtotal
-					var descuento
-					if(pedidoFactura != null){
-					  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-					  subtotal = certificado.detalle_certificado[0].subtotal
-					  descuento = certificado.detalle_certificado[0].descuento_monto
-					  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-					}
-					const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-					const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-					const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
+					const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+					const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+					const impuesto = parseFloat(detalle.impuesto ?? 0)
 					const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
 					let subtotalFactura = (valorUnitario * cantidad )
 					let descuentoFactura = descuentoGeneral
@@ -535,14 +555,23 @@ async function antiguedadSaldosCxC(req, res) {
 				}
 				element.diasVencimiento = diferenciaFechas;
 				const ultimafacturaDetalles = element.factura.factura_detalles.length-1;
+
+
 				try {
 					const pedidoFactura = element.factura.factura_detalles[ultimafacturaDetalles].pedido_factura;
-					if(pedidoFactura != null && pedidoFactura != undefined){
-						element.referenciaCliente = pedidoFactura.certificado.referencias != null ? pedidoFactura.certificado.referencias : '';
+					if (pedidoFactura.certificado !== null) {
+						element.referenciaCliente = pedidoFactura.certificado.referencias ?? "";
+					} else if (pedidoFactura.servicios_ontrack !== null) {
+						element.referenciaCliente = pedidoFactura.servicios_ontrack.comentarios ?? "";
+					} else {
+						element.referenciaCliente = ''; 
 					}
 				} catch (error) {
-					element.referenciaCliente = ''
-
+					if (element.factura.id_marca == 2) {
+						element.referenciaCliente = element.factura.comentarios != null ? element.factura.comentarios : ""
+					} else {
+						element.referenciaCliente = '';
+					}
 				}
 				data.push(element);
 			}

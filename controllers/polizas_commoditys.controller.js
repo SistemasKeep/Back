@@ -162,7 +162,8 @@ async function getFiltro(parametros){
 	return await Filter.get()
 }
 
-async function store(req, res){try {
+async function store(req, res){
+	try {
 		const parametros = req.body;
 		var registro = {
 			createdAt: moment().tz('America/Mexico_City'),
@@ -173,16 +174,23 @@ async function store(req, res){try {
             {campo:'idCommodity', tipo:'model', model:db.sequelize.models.commoditys},
 			{campo: 'isSensibleRobo', tipo: 'boolean'}
 		]
-		registro = await Validaciones.validParametros(req, res,obligatorios,registro);
-		if(!registro){
-			return '';
-		}
 		const validosOpcionales =[
             {campo:'limiteFerroviario', tipo:'number'},
 			{campo:'limiteAereo', tipo:'number'},
 			{campo:'limiteTerrestre', tipo:'number'},
-			{campo:'limiteMaritimo', tipo:'number'}
+			{campo:'limiteMaritimo', tipo:'number'},
         ]
+		const polizaDetalle = await db.sequelize.models.poliza_detalles.findByPk(parametros.idPolizaDetalle);
+		if(polizaDetalle !== null){
+			if(polizaDetalle.tarifa_commoditie === true){
+				validosOpcionales.push({campo:'tarifa', tipo:'number'})
+			}
+
+		}
+		registro = await Validaciones.validParametros(req, res,obligatorios,registro);
+		if(!registro){
+			return '';
+		}
 		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(registro,false,validosOpcionales,parametros,res)
 		if(dataValidarOpcionales == undefined){
 			return undefined;
@@ -375,16 +383,28 @@ async function update(req, res){
 		const { id } = req.params;
 		let seEdita = false;
 		var datosUpdate = {updatedAt: moment().tz('America/Mexico_City')}
+		const registroAEditar = await db.sequelize.models.polizas_commoditys.findByPk(id);
+		if(registroAEditar == null){
+			return res.status(400).send({ status: false, msg: "Registro no existe" });
+		}
+		if(registroAEditar.deletedAt != null){
+			return res.status(400).send({ status: false, msg: "Registro eliminado" });
+		}
 	
 		const validosOpcionales = [
-			{campo:'idPolizaDetalle', tipo:'model', model:db.sequelize.models.poliza_detalles},
-            {campo:'idCommodity', tipo:'model', model:db.sequelize.models.commoditys},
 			{campo:'limiteFerroviario', tipo:'number'},
 			{campo:'limiteAereo', tipo:'number'},
 			{campo:'limiteTerrestre', tipo:'number'},
 			{campo:'limiteMaritimo', tipo:'number'},
-			{campo: 'isSensibleRobo', tipo: 'boolean'}
+			{campo: 'isSensibleRobo', tipo: 'boolean'},
 		]
+		const polizaDetalle = await db.sequelize.models.poliza_detalles.findByPk(registroAEditar.id_poliza_detalle);
+		if(polizaDetalle !== null){
+			if(polizaDetalle.tarifa_commoditie === true){
+				validosOpcionales.push({campo:'tarifa', tipo:'number'})
+			}
+
+		}
 		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(datosUpdate,false,validosOpcionales,parametros,res)
 		if(dataValidarOpcionales == undefined){
 			return undefined;
@@ -393,13 +413,6 @@ async function update(req, res){
 		seEdita = dataValidarOpcionales[1]
 		if(!seEdita){
 			return res.status(200).send({ status: true, msg: "Registro no editado" });
-		}
-		const registroAEditar = await db.sequelize.models.polizas_commoditys.findByPk(id);
-		if(registroAEditar == null){
-			return res.status(400).send({ status: false, msg: "Registro no existe" });
-		}
-		if(registroAEditar.deletedAt != null){
-			return res.status(400).send({ status: false, msg: "Registro eliminado" });
 		}
 		var whereFind = {
 			where: {

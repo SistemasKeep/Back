@@ -197,7 +197,8 @@ async function store(req, res){
 		}
 		const validosOpcionales =[{campo:'idTpl', tipo:'model', model:db.sequelize.models.tpls},
 								  {campo:'isRedondo', tipo: 'boolean'},
-								  {campo:'canDeducible', tipo: 'boolean'}]
+								  {campo:'canDeducible', tipo: 'boolean'},
+								  {campo:'tarifaCommoditie',  tipo:'boolean'},]
 		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(registro,false,validosOpcionales,parametros,res)
 		if(dataValidarOpcionales == undefined){
 			return undefined;
@@ -433,7 +434,8 @@ async function update(req, res){
 								   {campo:'limiteMaximo', tipo:'number'},
 								   {campo:'limiteMinimo', tipo:'number'},
 								   {campo:'isRedondo', tipo: 'boolean'},
-								   {campo:'canDeducible', tipo: 'boolean'}]
+								   {campo:'canDeducible', tipo: 'boolean'},
+								   {campo:'tarifaCommoditie',  tipo:'boolean'},]
 		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(datosUpdate,false,validosOpcionales,parametros,res)
 		if(dataValidarOpcionales == undefined){
 			return undefined;

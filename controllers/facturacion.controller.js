@@ -175,24 +175,10 @@ async function index(req, res) {
                 var impuestoFactura = 0
                 var descuentoFactura = 0
                 for(const detalle of element.factura_detalles){
-                    const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-                    var impuestoCertificado
-                    var subtotal
-                    var descuento
-                    if(pedidoFactura != null){
-                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-                        if(certificado != null){
-                            subtotal = certificado.detalle_certificado[0].subtotal
-                            descuento = certificado.detalle_certificado[0].descuento_monto
-                            impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-                        }else{
-                            console.log(pedidoFactura.id)
-                        }
-                    }
-                    const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-                    const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-                    const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
-                    const subtotalData = parseFloat(detalle.subtotal ?? impuestoCertificado)
+                    const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+                    const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+                    const impuesto = parseFloat(detalle.impuesto ?? 0)
+                    const subtotalData = parseFloat(detalle.subtotal ?? 0)
                     const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
                     subtotalFactura = subtotalFactura + subtotalData
                     descuentoFactura = descuentoFactura + descuentoGeneral
@@ -237,8 +223,7 @@ async function index(req, res) {
                 const getRelaciones =  [ 'agente_operativo','agente_venta_1', 'agente_venta_2' ]
                 const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
                 const relacionesAgente = await findRelacionesAgentes.getRelaciones()
-                const idMarca = 1
-                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id, id_marca: idMarca}, include:relacionesAgente,paranoid: false})
+                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id}, include:relacionesAgente,paranoid: false})
                 const clienteDetalles = await db.sequelize.models.cliente_detalles.findByPk(clienteRazonSocial.cliente.id_detalle_cliente,{include:['agente_credito_cobranza']})
                 const relsCliente = [
 					'categoria_cliente',
@@ -266,6 +251,12 @@ async function index(req, res) {
                 element.notas_credito = await db.sequelize.models.notas_credito.findAll({where:{id_factura:element.id}}),
                 element.total_factura = parseFloat(parseFloat(totalFactura).toFixed(2))
                 element.saldo_saldado = parseFloat((totalFactura - (element.cxc != null ? element.cxc.saldo : 0)).toFixed(2)) 
+                const elementosOc = await db.sequelize.models.oc_facturas.findAll({where: {id_factura:element.id},include: ['orden_compra']});
+               
+                element.ordenes_compra = []
+                for(const oc of elementosOc){
+                    element.ordenes_compra.push(oc.orden_compra)
+                }
 			}
 			data.push(element)
 		}
@@ -429,20 +420,10 @@ async function show(req, res){
                 var impuestoFactura = 0
                 var descuentoFactura = 0
                 for(const detalle of element.factura_detalles){
-                    const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-                    var impuestoCertificado
-                    var subtotal
-                    var descuento
-                    if(pedidoFactura != null){
-                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-                        subtotal = certificado.detalle_certificado[0].subtotal
-                        descuento = certificado.detalle_certificado[0].descuento_monto
-                        impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-                    }
-                    const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-                    const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-                    const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
-                    const subtotalData = parseFloat(detalle.subtotal ?? impuestoCertificado)
+                    const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+                    const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+                    const impuesto = parseFloat(detalle.impuesto ?? 0)
+                    const subtotalData = parseFloat(detalle.subtotal ?? 0)
                     const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
                     subtotalFactura = subtotalFactura + subtotalData
                     descuentoFactura = descuentoFactura + descuentoGeneral
@@ -487,8 +468,7 @@ async function show(req, res){
                 const getRelaciones =  [ 'agente_operativo','agente_venta_1', 'agente_venta_2' ]
                 const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
                 const relacionesAgente = await findRelacionesAgentes.getRelaciones()
-                const idMarca = 1
-                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id, id_marca: idMarca}, include:relacionesAgente,paranoid: false})
+                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id}, include:relacionesAgente,paranoid: false})
                 const clienteDetalles = await db.sequelize.models.cliente_detalles.findByPk(clienteRazonSocial.cliente.id_detalle_cliente,{include:['agente_credito_cobranza']})
                 const relsCliente = [
 					'categoria_cliente',
@@ -515,7 +495,12 @@ async function show(req, res){
                 element.agente_venta_2 = agentesCliente !== null && agentesCliente !== undefined ? agentesCliente.agente_venta_2 : null
                 element.notas_credito = await db.sequelize.models.notas_credito.findAll({where:{id_factura:element.id}}),
                 element.total_factura = parseFloat(parseFloat(totalFactura).toFixed(2))
-                element.saldo_saldado = parseFloat((totalFactura - (element.cxc != null ? parseFloat(parseFloat(element.cxc.saldo).toFixed(2)) : 0)).toFixed(2)) 
+                element.saldo_saldado = parseFloat((totalFactura - (element.cxc != null ? parseFloat(parseFloat(element.cxc.saldo).toFixed(2)) : 0)).toFixed(2))
+                const elementosOc = await db.sequelize.models.oc_facturas.findAll({where: {id_factura:element.id},include: ['orden_compra']});
+                element.ordenes_compra = []
+                for(const oc of elementosOc){
+                    element.ordenes_compra.push(oc.orden_compra)
+                }
 			}
 			return res.status(200).send({ status: true, data: element});
 		}
@@ -586,7 +571,6 @@ async function facturar(idCertificado,idCliente,usuario,facturar = undefined){
             const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_cliente:certificado.id_cliente,id_oficina:certificado.oficina_razon_social.id_oficina}});
             let marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: 1}})
             const oficina = await db.sequelize.models.oficinas.findByPk(certificado.oficina_razon_social.id_oficina,{include: ['razones_sociales']});
-            //const referencia = await genReferencia(marcaAgenteOficina.clave,certificado.oficina_razon_social.id_razon_social,oficina)
             registroFactura.referencia = certificado.no_operacion
             const factura = await db.sequelize.models.facturas.create(registroFactura);
             const clienteDetallesUpdate = await db.sequelize.models.cliente_detalles.findByPk(cliente.id_detalle_cliente)
@@ -667,29 +651,6 @@ async function facturar(idCertificado,idCliente,usuario,facturar = undefined){
             await db.sequelize.models.cuentas_por_cobrar.create(registroCXC);
         }
     }
-}
-
-async function genReferencia(claveMarcaAgenteOficina,idRazonSocial,oficina){
-	var claveRazonSocial = undefined
-	await oficina.razones_sociales.forEach((oficinaRazonSocial,index) => {
-		if(oficinaRazonSocial.id_razon_social == idRazonSocial){
-			claveRazonSocial = (index +1)
-		}
-	});
-	var noOperacion = claveMarcaAgenteOficina + "-" + claveRazonSocial
-
-	var whereFind = {
-		where: {
-			referencia: {[db.Sequelize.Op.like]: `%${noOperacion}%`}
-		},paranoid: false
-	}
-	const registrosEncontrados = await db.sequelize.models.facturas.findAll(whereFind);
-	var countOperaciones = 0;
-	for(const registro of registrosEncontrados){
-    countOperaciones = countOperaciones +1
-	}
-	noOperacion = noOperacion + "-" + (countOperaciones +1)
-	return noOperacion
 }
 
 async function exportacion(req, res) {
@@ -787,7 +748,6 @@ async function exportacion(req, res) {
             data.push(element)
         }
         const elementos = []
-        let idMarca = 1
         for(const element of data){
             const relClientes = [ 'cliente.tipo_cliente','cliente.estado.pais.continente','cliente.oficina_interno','razon_social.pais.continente', 'razon_social.uso_cfdi','razon_social.metodo_pago','razon_social.forma_pago','razon_social.razon_bloqueo','razon_social.regimen_fiscal','razon_social.moneda_credito' ]
 			const findRelaciones = new Relaciones(relClientes,relClientes,db.sequelize.models)
@@ -804,20 +764,10 @@ async function exportacion(req, res) {
             var impuestoFactura = 0
             var descuentoFactura = 0
             for(const detalle of element.factura_detalles){
-                const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-                var impuestoCertificado
-                var subtotal
-                var descuento
-                if(pedidoFactura != null){
-                    const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-                    subtotal = certificado.detalle_certificado[0].subtotal
-                    descuento = certificado.detalle_certificado[0].descuento_monto
-                    impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-                }
-                const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-                const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-                const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
-                const subtotalData = parseFloat(detalle.subtotal ?? impuestoCertificado)
+                const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+                const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+                const impuesto = parseFloat(detalle.impuesto ?? 0)
+                const subtotalData = parseFloat(detalle.subtotal ?? 0)
                 const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
                 subtotalFactura = subtotalFactura + subtotalData
                 descuentoFactura = descuentoFactura + descuentoGeneral
@@ -862,7 +812,7 @@ async function exportacion(req, res) {
             const getRelaciones =  [ 'agente_operativo','agente_venta_1', 'agente_venta_2' ]
             const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
             const relacionesAgente = await findRelacionesAgentes.getRelaciones()
-            let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id, id_marca: idMarca}, include:relacionesAgente,paranoid: false})
+            let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id}, include:relacionesAgente,paranoid: false})
             const clienteDetalles = await db.sequelize.models.cliente_detalles.findByPk(clienteRazonSocial.cliente.id_detalle_cliente,{include:['agente_credito_cobranza']})
             elementos.push({
                 'Folio': element.folio,
@@ -901,7 +851,7 @@ async function exportacion(req, res) {
             nombreReporte:nombreReporte,
             elementos:elementos,
             namesSheets:namesSheets, 
-            idMarca:idMarca
+            idMarca:null
         })
 
         return await reporteCertificados.gerReporteOneSheet(res,req,false)
@@ -959,12 +909,48 @@ async function getZip(req, res) {
 	} 
 }
 
+async function delRelOC(req, res){
+	const { id } = req.params;
+	if(!Number.isInteger(parseInt(id))){
+		res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
+		return false
+	} 
+	if(!Number.isInteger(parseInt(req.body.idOrdenCompra))){
+		res.status(400).send({status:false , msg: `El parametro idOrdenCompra debe ser int.` });
+		return false
+	} 
+	
+	try {
+		const registroEncontrado = await db.sequelize.models.facturas.findByPk(id, {paranoid: false});
+		if(registroEncontrado != null){
+            const ordenCompra = await db.sequelize.models.ordenes_compra.findByPk(req.body.idOrdenCompra)
+            if(ordenCompra != null){
+                const ocFacTracking = await db.sequelize.models.oc_facturas.findOne({
+                    where:{
+                        id_orden_compra:ordenCompra.id,
+                        id_factura:registroEncontrado.id
+                    }
+                })
+                if(ocFacTracking == null){
+                    return res.status(200).send({ status: true, msg: "La relación no existe"});
+                }
+                await ocFacTracking.destroy({ where: { id: ocFacTracking.id } });
+                return res.status(200).send({ status: true, msg: "Registro cancelado con éxito"});
+            }
+            return res.status(400).send({ status: false, msg: "Orden de compra no existe" });
+		}
+		return res.status(400).send({ status: false, msg: "Factura no existe" });
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
+
 module.exports = {
   index,
   show,
   facturar,
   getXML,
   exportacion,
-  getZip
-
+  getZip,
+  delRelOC
 }

@@ -97,6 +97,11 @@ module.exports = function(sequelize, DataTypes) {
       defaultValue: false,
       allowNull: false
     },
+    tarifa_commoditie: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
+    },
     createdAt: {
       type: DataTypes.DATE(3),
       allowNull: true

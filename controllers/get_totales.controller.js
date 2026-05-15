@@ -110,7 +110,29 @@ async function getTotalesLocal(parametros,req, res) {
         parametros = await getMarca(parametros)
         const iva = await getIva(parametros)
         const atributoIsDeducible = await atributoIsDeducibleFn(parametros,atributoKeepro,polizaDetalles,isContenedor)
-        const tarifaClienteFinal = await getTarifaClienteFinal(atributoKeepro,atributoIsDeducible)
+        let tarifaClienteFinal = undefined
+        if(polizaDetalles.tarifa_commoditie === true){
+            var whereFind = {
+                where: {
+                    [db.Sequelize.Op.and]: {
+                        id_poliza_detalle: polizaDetalles.id,
+                        id_commodity: parametros.idCommodity,
+                        deletedAt: null
+                    }
+                }
+            }
+            const polizaCommoditie = await db.sequelize.models.polizas_commoditys.findOne(whereFind);
+            if(polizaCommoditie !== null){
+                if(polizaCommoditie.tarifa !== null && polizaCommoditie.tarifa !== undefined){
+                    if(parseFloat(polizaCommoditie.tarifa) > 0){
+                        tarifaClienteFinal = parseFloat(polizaCommoditie.tarifa)
+                    }
+                }
+            }
+        }
+        if(tarifaClienteFinal === undefined){
+            tarifaClienteFinal = await getTarifaClienteFinal(atributoKeepro,atributoIsDeducible)
+        }
         var minimoVenta = await getMinimoVenta(atributoKeepro,atributoIsDeducible)
         const tarifaCompra = await getTarifaCompra(parametros,atributoKeepro,atributoIsDeducible,polizaDetalles,isContenedor,sumaAsegurada)
         if(tarifaCompra.status !== undefined){
@@ -213,7 +235,12 @@ function esRFCEExtranjero(rfc) {
 }
 
 async function getMarca(parametros){
-    parametros.idMarca = 1
+    try {
+        const razonSocialAux = await db.sequelize.models.razones_sociales.findByPk(parametros.idRazonSocial);
+        parametros.idMarca = razonSocialAux.id_nacionalidad_timbrado == 96 ? 1 : 1
+    } catch (error) {
+        parametros.idMarca = undefined
+    }
     return parametros
 }
 

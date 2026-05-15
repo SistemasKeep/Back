@@ -83,6 +83,11 @@ async function index(req, res) {
 				for(const detalle of detalles){
 					element.detalles_factura.push(detalle)
 				}
+				const elementoOc = await db.sequelize.models.oc_facturas.findOne({where: {id_orden_compra:element.id},include: ['factura']});
+                element.factura = null
+                if(elementoOc != null ){
+                    element.factura = elementoOc.factura
+                }
 			}
 			data.push(element)
 		}
@@ -260,6 +265,11 @@ async function show(req, res){
 				for(const detalle of detalles){
 					element.detalles_factura.push(detalle)
 				}
+				const elementoOc = await db.sequelize.models.oc_facturas.findOne({where: {id_orden_compra:element.id},include: ['factura']});
+                element.factura = null
+                if(elementoOc != null ){
+                    element.factura = elementoOc.factura
+                }
 			}
 			return res.status(200).send({ status: true, data: element});
 		}
@@ -336,7 +346,6 @@ async function update(req, res){
 				}
 				regVal = dataValidarOpcionales[0]
 			}
-
 			seEdita = true
 			const detallesToDelete = await db.sequelize.models.facturas_proveedor_detalles.findAll({where:{id_orden_compra:id}})
 			for(const detalleToDelete of detallesToDelete){
@@ -381,7 +390,8 @@ async function update(req, res){
 				registroDetalle.subtotal = convert((parseInt(detalle.cantidad ?? 0) * parseFloat(detalle.precioUnitario ?? 0)), 1, 6) 
 				if(datoFacturacionEmisor.nacionalidad_timbrado.clave.toUpperCase() == "MX" && detalle.haveImpuesto === true){
 					detalle.impuestos = convert((registroDetalle.subtotal  - (detalle.descuentos)) * 0.16, 1, 6) 
-				}let impuestoAdicionalPorcentaje = parseFloat(detalle.impuestoAdicional) / 100;
+				}
+				let impuestoAdicionalPorcentaje = parseFloat(detalle.impuestoAdicional) / 100;
 				let impuestoAdicional = convert((registroDetalle.subtotal - (detalle.descuentos)) * impuestoAdicionalPorcentaje, 1, 6);
 
 				datosUpdate.subtotal =  convert((datosUpdate.subtotal  + registroDetalle.subtotal), 1, 6) 
@@ -409,11 +419,43 @@ async function update(req, res){
 				}
 			}
 		}
+        const warings = []
+		if(marca.id == 2){
+			if(parametros.idFactura !== undefined && parametros.idFactura !== null && Number.isInteger(parseInt(parametros.idFactura))){
+				const factura = await db.sequelize.models.facturas.findByPk(parametros.idFactura)
+				if(factura == null){
+					return res.status(400).send({ status: false, msg: "El registro idFactura no existe: " + parametros.idFactura});
+				}
+				if(factura.id_marca != marca.id){
+					return res.status(400).send({ status: false, msg: "La orden de compra debe tener la misma marca que la factura."});
+				}
+				const ocFacturasTrackingEncontrados = await db.sequelize.models.oc_facturas.findAll({where: {id_orden_compra:id}});
+				let novalido = false
+				for(const ofFactura of ocFacturasTrackingEncontrados){
+					if(ofFactura.id_factura != parametros.idFactura){
+						novalido = true
+					}
+				}
+				if(ocFacturasTrackingEncontrados.length > 0){
+					if(novalido){
+						warings.push( "No se generó la relación, ya que las órdenes de compra solo pueden estar ligadas a una sola factura.");
+					}
+					seEdita = true
+				}else{
+					await db.sequelize.models.oc_facturas.create({
+						id_factura: factura.id,
+						id_orden_compra: id,
+						id_usuario_registro: req.usuario.id
+					});
+					seEdita = true
+				}
+			}
+		}
 		if(!seEdita){
 			return res.status(200).send({ status: true, msg: "Registro no editado" });
 		}
 		await registroAEditar.update(datosUpdate, { where: { id: id } });
-		return res.status(200).send({ status: true, msg: "Registro editado con éxito"});
+		return res.status(200).send({ status: true, msg: "Registro editado con éxito", warings:warings});
 	} catch (error) {
 		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
 	} 
@@ -623,6 +665,11 @@ async function exportacion(req, res) {
 				for(const detalle of detalles){
 					element.detalles_factura.push(detalle)
 				}
+				const elementoOc = await db.sequelize.models.oc_facturas.findOne({where: {id_orden_compra:element.id},include: ['factura']});
+                element.factura = null
+                if(elementoOc != null ){
+                    element.factura = elementoOc.factura
+                }
 			}
 			data.push(element)
 		}
@@ -641,7 +688,8 @@ async function exportacion(req, res) {
 				'IVA': ManipuladorCadenas.formatMoney(element.impuestos),
 				'Importe': ManipuladorCadenas.formatMoney(parseFloat(element.impuestos) + parseFloat(element.subtotal)),
 				'Moneda': element.moneda.clave,
-				'Servicio registrado': element.detalles_factura[0].producto.descripcion
+				'Servicio registrado': element.detalles_factura[0].producto.descripcion,
+				'Factura relacionada': element.factura != null ? element.factura.folio : ""
 			})
 		}
 
@@ -678,6 +726,50 @@ async function getFiltroExportacion(parametros){
 	return await Filter.get()
 }
 
+async function relacionarOcFactura(req, res){
+	try {
+		const parametros = req.body;
+		var registro = {
+			createdAt: moment().tz('America/Mexico_City'),
+			updatedAt: moment().tz('America/Mexico_City')
+		}
+		let obligatorios = [{campo:'idFactura', tipo:'model', model:db.sequelize.models.facturas},
+							{campo:'idOrdenCompra', tipo:'model', model:db.sequelize.models.ordenes_compra},
+        ]
+		registro = await Validaciones.validParametros(req, res,obligatorios,registro);
+		if(!registro){
+			return '';
+		}
+		const factura = await db.sequelize.models.facturas.findByPk(parametros.idFactura)
+		const ordenCompra = await db.sequelize.models.ordenes_compra.findByPk(parametros.idOrdenCompra)
+		if(factura.id_marca != ordenCompra.id_marca){
+			return res.status(400).send({ status: false, msg: "La factura debe tener la misma marca que la orden de compra."});
+		}
+		const ocFacturasTrackingEncontrados = await db.sequelize.models.oc_facturas.findAll({where: {id_orden_compra:ordenCompra.id}});
+		let novalido = false
+		for(const ofFactura of ocFacturasTrackingEncontrados){
+			if(ofFactura.id_factura != parametros.idFactura){
+				novalido = true
+			}
+		}
+		if(ocFacturasTrackingEncontrados.length > 0){
+			if(novalido){
+				return res.status(400).send({ status: false, msg: "Las ordenes de compra solo pueden estar ligadas a una sola factura."});
+			}else{
+				return res.status(400).send({ status: false, msg: "La relación ya existe."});
+			}
+		}else{
+			const ocFacTracking = await db.sequelize.models.oc_facturas.create({
+				id_factura: factura.id,
+				id_orden_compra: ordenCompra.id,
+				id_usuario_registro: req.usuario.id
+			});
+			return res.status(200).send({ status: true, msg: "Elemento registrado correctamente", data: {id:ocFacTracking.id}});
+		}
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
 
 module.exports = {
 	index,
@@ -687,5 +779,6 @@ module.exports = {
 	destroy,
 	cargarArchivo,
 	eliminarArchivo,
-	exportacion
+	exportacion,
+	relacionarOcFactura
 }

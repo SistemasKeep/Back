@@ -675,4 +675,64 @@ module.exports = function(models) {
   models.pagos_archivos.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
   models.usuarios.hasMany(models.pagos_archivos, { as: "pagos_archivos_registrados", foreignKey: "id_usuario_registro"});
 
+
+  // Temporalidad
+  models.temporalidad.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+  
+  //Estatus OnTrack
+  models.estatus_ontrack.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+
+
+  //Servicios OnTrack
+  models.servicios_ontrack.belongsTo(models.certificados, { as: "certificado", foreignKey: "id_certificado"});
+  models.servicios_ontrack.belongsTo(models.clientes, { as: "cliente", foreignKey: "id_cliente"});
+  models.servicios_ontrack.belongsTo(models.oficinas_razones_sociales, { as: "oficina_razon_social", foreignKey: "id_oficina_razon_social"});
+  models.servicios_ontrack.belongsTo(models.marcas, { as: "marca", foreignKey: "id_marca"});
+  models.servicios_ontrack.belongsTo(models.tipos_cambio_futuro, { as: "tipo_cambio_futuro", foreignKey: "id_tipo_cambio_futuro"});
+  models.servicios_ontrack.belongsTo(models.proveedores, { as: "proveedor", foreignKey: "id_proveedor"});
+  models.servicios_ontrack.belongsTo(models.estados, { as: "estado_origen", foreignKey: "id_estado_origen"});
+  models.servicios_ontrack.belongsTo(models.estados, { as: "estado_destino", foreignKey: "id_estado_destino"});
+  models.servicios_ontrack.belongsTo(models.contactos, { as: "contacto", foreignKey: "id_contacto"});
+  models.servicios_ontrack.belongsTo(models.estatus_ontrack, { as: "estatus_ontrack", foreignKey: "id_estatus_ontrack"});
+  models.servicios_ontrack.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+  models.servicios_ontrack.belongsTo(models.monedas, { as: "moneda", foreignKey: "id_moneda"});
+  models.servicios_ontrack.belongsTo(models.monedas, { as: "moneda_compra", foreignKey: "id_moneda_compra"});
+  models.pedidos_factura.belongsTo(models.servicios_ontrack, { as: "servicios_ontrack", foreignKey: "id_servicio_ontrack"});
+
+  //Contactos Transportistas
+  models.contactos_transportistas.belongsTo(models.servicios_ontrack, { as: "servicio_ontrack", foreignKey: "id_servicio_ontrack"});
+  models.servicios_ontrack.hasMany(models.contactos_transportistas, { as: "contactos_transportistas", foreignKey: "id_servicio_ontrack"});
+  models.contactos_transportistas.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+
+  //Servicios OnTrack Detalles
+  models.servicios_ontrack_detalles.belongsTo(models.atributos_ontrack, { as: "atributo_ontrack", foreignKey: "id_atributo_ontrack"});
+  models.servicios_ontrack_detalles.belongsTo(models.servicios_ontrack, { as: "servicio_ontrack", foreignKey: "id_servicio_ontrack"});
+  models.servicios_ontrack.hasMany(models.servicios_ontrack_detalles, { as: "servicios_ontrack_detalles", foreignKey: "id_servicio_ontrack"});
+  models.servicios_ontrack_detalles.belongsTo(models.productos, { as: "producto", foreignKey: "id_producto"});
+  models.servicios_ontrack_detalles.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+
+  //Atributos OnTrack
+  models.atributos_ontrack.belongsTo(models.monedas, { as: "moneda_compra", foreignKey: "id_moneda_compra"});
+  models.atributos_ontrack.belongsTo(models.monedas, { as: "moneda_venta", foreignKey: "id_moneda_venta"});
+  models.atributos_ontrack.belongsTo(models.oficinas_productos, { as: "oficina_producto", foreignKey: "id_oficina_producto"});
+  models.oficinas_productos.hasMany(models.atributos_ontrack, { as: "atributos_ontrack", foreignKey: "id_oficina_producto"});
+  models.atributos_ontrack.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+
+  //Seguimiento Estatus OnTrack
+  models.seguimiento_estatus_ontrack.belongsTo(models.servicios_ontrack, { as: "servicio_ontrack", foreignKey: "id_servicio_ontrack"});
+  models.seguimiento_estatus_ontrack.belongsTo(models.estatus_ontrack, { as: "estatus_ontrack", foreignKey: "id_estatus_ontrack"});
+  models.servicios_ontrack.hasMany(models.seguimiento_estatus_ontrack, { as: "seguimiento_estatus", foreignKey: "id_servicio_ontrack"});
+  models.seguimiento_estatus_ontrack.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+
+  //Ordenes Compra Facturas
+  models.oc_facturas.belongsTo(models.facturas, { as: "factura", foreignKey: "id_factura"});
+  models.oc_facturas.belongsTo(models.ordenes_compra, { as: "orden_compra", foreignKey: "id_orden_compra"});
+  models.oc_facturas.belongsTo(models.usuarios, { as: "usuario_registro", foreignKey: "id_usuario_registro"});
+  models.facturas.hasMany(models.oc_facturas, { as: "oc_factura", foreignKey: "id_factura"});
+  models.ordenes_compra.hasMany(models.oc_facturas, { as: "oc_factura", foreignKey: "id_factura"});
 };
+
+
+
+
+

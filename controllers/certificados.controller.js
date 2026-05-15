@@ -377,6 +377,7 @@ async function store(req, res){
 			return res.status(400).send({ status: false, msg: "Para generar operaciones, es necesario aceptar los términos y condiciones de la plataforma"});
 		}
 		parametros.idMarca = 1
+		req.body.idMarca = 1
 		var atributoKeepro = undefined
 		var polizaDetalle = undefined
 		var oficinaProducto = undefined
@@ -1773,6 +1774,7 @@ async function updateFull(registroAEditar,req, res){
 
 		try {
 			parametros.idMarca = 1
+			req.body.idMarca = 1
 		} catch (error) {
 			parametros.idMarca = undefined
 		}
@@ -3219,8 +3221,8 @@ async function ejecutarReporte(res,req,relaciones,filtro,relacionesRc,tipoDocume
 					"Minimo de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_compra),
 					"Moneda de Compra": documento.moneda.clave,
 					"Subtotal de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].costo_compra),
-					"Impuesto de compra": documento.proveedor.id_nacionalidad == 92 ? ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : ManipuladorCadenas.formatMoney(0),
-					"Total de compra": ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) + (documento.proveedor.id_nacionalidad == 92 ? (parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : 0)) ,
+					"Impuesto de compra": documento.proveedor.id_nacionalidad == 96 ? ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : ManipuladorCadenas.formatMoney(0),
+					"Total de compra": ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) + (documento.proveedor.id_nacionalidad == 96 ? (parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : 0)) ,
 					"Modalidad de transporte":  documento.modalidad_transporte.nombre,
 					"Bien asegurado": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.descripcion : "",
 					"Categoria del bien asegurado": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.categoria.descripcion : "",
@@ -3280,8 +3282,8 @@ async function ejecutarReporte(res,req,relaciones,filtro,relacionesRc,tipoDocume
 					"Minimo de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_compra),
 					"Moneda de Compra": documento.moneda.clave,
 					"Subtotal de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].costo_compra),
-					"Impuesto de compra": documento.proveedor.id_nacionalidad == 92 ? ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : ManipuladorCadenas.formatMoney(0),
-					"Total de compra": ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) + (documento.proveedor.id_nacionalidad == 92 ? (parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : 0)) ,
+					"Impuesto de compra": documento.proveedor.id_nacionalidad == 96 ? ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : ManipuladorCadenas.formatMoney(0),
+					"Total de compra": ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) + (documento.proveedor.id_nacionalidad == 96 ? (parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : 0)) ,
 					"Subtotal de sobreventa": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].subtotal_sobreventa),
 					"Moneda de Profit": documento.moneda.clave,
 					"Profit": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].profit),

@@ -72,11 +72,9 @@ api.get('/getNewUser/:id', token.validarToken, token.updateToken, validarPermiso
 
 api.get('/exportacion/certificados', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, KeePro.indexCertificado, certificados.exportacion);
 api.get('/facturas/pdf/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, facturas_pdf.showPDF);
-api.post('/viewPdf', genPdf.genPdf);
 api.get('/facturas/getXML/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, facturas.getXML);
 api.get('/exportacion/antiguedadSaldosCxC', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, cuentasPorCobrar.antiguedadSaldosCxC);
 api.get('/getZip/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, facturas.getZip);
-api.post('/viewPdf', genPdf.genPdf)
 
 api.post('/facturas/mail/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'L'), validarPermisos.validarPermiso, facturas_mails.sendFactura)
 

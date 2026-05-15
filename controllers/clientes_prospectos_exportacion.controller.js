@@ -124,8 +124,7 @@ async function exportar(req, res) {
 			var relacionesAgentes = [];
 			const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models);
 			relacionesAgentes = await findRelacionesAgentes.getRelaciones();
-			var marca = await db.sequelize.models.marcas.findOne(whereFindMarcas);
-			const agentesClienteDatakeepro = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:element.id, id_marca: marca.id}, include:relacionesAgentes,paranoid: false});
+			const agentesClienteDatakeepro = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:element.id}, include:relacionesAgentes,paranoid: false});
 			if(agentesClienteDatakeepro != null){
 				const agentesClientekeepro = {
 					agente_operativo: agentesClienteDatakeepro.agente_operativo != null ? agentesClienteDatakeepro.agente_operativo.nombre : null,
@@ -195,21 +194,24 @@ async function exportar(req, res) {
 					for(const detalle of factura.factura_detalles){
 						
 						const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-						var subtotalCertificado;
-						var descuentoCertificado;
-						var impuestoCertificado;
 						var subProfitMXN;
 						if(pedidoFactura != null){
-							const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-							subtotalCertificado = certificado.detalle_certificado[0].subtotal;
-							descuentoCertificado = certificado.detalle_certificado[0].descuento_monto;
-							impuestoCertificado = certificado.detalle_certificado[0].monto_iva;
-							subProfitMXN = certificado.detalle_certificado[0].costo_compra;
+							if(pedidoFactura.id_certificado){
+								const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
+								subProfitMXN = certificado.detalle_certificado[0].costo_compra;
+							}else if(pedidoFactura.id_servicio_ontrack !== null){
+								const detalles = await db.sequelize.models.servicios_ontrack_detalles.findAll({where:{id_servicio_ontrack: pedidoFactura.id_servicio_ontrack}})
+								let costoCompra = 0
+								for(const detalle of detalles){
+									costoCompra = costoCompra + parseFloat(detalle.costo_compra)
+								}
+								subProfitMXN = costoCompra
+							}
 						}
 						profitMXN += parseFloat(subProfitMXN);
-						subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotalCertificado);
-						impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado);
-						descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuentoCertificado);
+						subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0);
+						impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0);
+						descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0);
 					}
 					const totalFactura = subtotalFactura + impuestoFactura - descuentoFactura;
 					AcumuladoMXN += totalFactura;
@@ -244,23 +246,26 @@ async function exportar(req, res) {
 					for(const detalle of factura.factura_detalles){
 						
 						const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-						var subtotalCertificado;
-						var descuentoCertificado;
-						var impuestoCertificado;
 						var subProfitUSD;
 						if(pedidoFactura != null){
-							const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-							subtotalCertificado = certificado.detalle_certificado[0].subtotal;
-							descuentoCertificado = certificado.detalle_certificado[0].descuento_monto;
-							impuestoCertificado = certificado.detalle_certificado[0].monto_iva;
-							subProfitUSD = certificado.detalle_certificado[0].costo_compra;
+							if(pedidoFactura.id_certificado){
+								const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
+								subProfitMXN = certificado.detalle_certificado[0].costo_compra;
+							}else if(pedidoFactura.id_servicio_ontrack !== null){
+								const detalles = await db.sequelize.models.servicios_ontrack_detalles.findAll({where:{id_servicio_ontrack: pedidoFactura.id_servicio_ontrack}})
+								let costoCompra = 0
+								for(const detalle of detalles){
+									costoCompra = costoCompra + parseFloat(detalle.costo_compra)
+								}
+								subProfitMXN = costoCompra
+							}
 						}
 						profitAcumuladoUSD += parseFloat(subProfitUSD);
-						subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotalCertificado);
-						impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado);
-						descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuentoCertificado);
+						subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0);
+						impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0);
+						descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0);
 					}
-					const totalFacturaUSD = subtotalFactura + impuestoFactura - descuentoFactura;
+					const totalFacturaUSD = subtotalFactura + impuestoFactura - descuentoFactura;º
 					const totalFacturaMX = parseFloat((totalFacturaUSD * equivalencia).toFixed(decimales));
 					const totalProfitMX = parseFloat((profitAcumuladoUSD * equivalencia).toFixed(decimales));
 					AcumuladoMXN += totalFacturaMX;

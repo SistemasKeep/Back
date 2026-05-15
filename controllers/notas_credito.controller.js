@@ -11,7 +11,6 @@ const { MailController } = require('./email.controller')
 const { genPdfLocal } = require('../controllers/notas_credito_pdf.controller');
 const fs = require('fs');
 const path = require('path');
-const xml2js = require('xml2js');
 
 async function index(req, res) {
 	const page = parseInt(Number.isInteger(parseInt(req.query.page)) && Math.sign(parseInt(req.query.page)) === 1 ? req.query.page : 1);
@@ -173,21 +172,18 @@ async function index(req, res) {
 				element.primer_documento = null
                 for(const detalle of element.factura.factura_detalles){
                     const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-                    var impuestoCertificado
-                    var subtotal
-                    var descuento
-                    if(pedidoFactura != null){
-                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-                        subtotal = certificado.detalle_certificado[0].subtotal
-                        descuento = certificado.detalle_certificado[0].descuento_monto
-                        impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-						element.primer_documento = "Certificado"
+					if(pedidoFactura != null){
+						if(pedidoFactura.id_certificado !== null){
+							element.primer_documento = "Certificado"
+						}else if(pedidoFactura.id_servicio_ontrack !== null){
+							element.primer_documento = "Servicio Monitoreo"
+						}
                     } else{
 						element.primer_documento = "Factura Manual"
 					}
-                    const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-                    const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-                    const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
+                    const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+                    const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+                    const impuesto = parseFloat(detalle.impuesto ?? 0)
                     const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
                     subtotalFactura = subtotalFactura + (valorUnitario * cantidad )
                     descuentoFactura = descuentoFactura + descuentoGeneral
@@ -232,8 +228,7 @@ async function index(req, res) {
                 const getRelaciones =  [ 'agente_operativo','agente_venta_1' ]
                 const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
                 const relacionesAgente = await findRelacionesAgentes.getRelaciones()
-                const idMarca = 1
-                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id, id_marca: idMarca}, include:relacionesAgente,paranoid: false})
+				let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id}, include:relacionesAgente,paranoid: false})
                 const clienteDetalles = await db.sequelize.models.cliente_detalles.findByPk(clienteRazonSocial.cliente.id_detalle_cliente,{include:['agente_credito_cobranza']})
                 const relsCliente = [
 					'categoria_cliente',
@@ -320,19 +315,9 @@ async function store(req, res){
 		var impuestoFactura = 0
 		var descuentoFactura = 0
 		for(const detalle of factura.factura_detalles){
-			const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-			var impuestoCertificado
-			var subtotal
-			var descuento
-			if(pedidoFactura != null){
-			  const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-			  subtotal = certificado.detalle_certificado[0].subtotal
-			  descuento = certificado.detalle_certificado[0].descuento_monto
-			  impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-			}
-			subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? subtotal)
-			impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? impuestoCertificado)
-			descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? descuento)
+			subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
+			impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
+			descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
 		}
 		const totalFactura = (subtotalFactura + impuestoFactura) - descuentoFactura
 		if(impuestoFactura > 0){
@@ -393,17 +378,31 @@ async function store(req, res){
 			for(const facturaDetalle of factura.factura_detalles){
 				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
 				if(pedidoFactura != null){
-					const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { paranoid: false });
-					const datosUpdateDetalle = {
-						estatus: "P",
-						updatedAt: moment().tz('America/Mexico_City')
+					if(pedidoFactura.id_certificado !== null){
+						const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { paranoid: false });
+						const datosUpdateDetalle = {
+							estatus: "P",
+							updatedAt: moment().tz('America/Mexico_City')
+						}
+						const datosUpdateCertificado = {
+							estatus: "N",
+							updatedAt: moment().tz('America/Mexico_City')
+						}
+						await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+						await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
+					} else if(pedidoFactura.id_servicio_ontrack !== null){
+						const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+						const datosUpdateDetalle = {
+							estatus: "P",
+							updatedAt: moment().tz('America/Mexico_City')
+						}
+						const datosUpdateServicioMonitoreo = {
+							estatus: "N",
+							updatedAt: moment().tz('America/Mexico_City')
+						}
+						await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+						await servicioMonitoreo.update(datosUpdateServicioMonitoreo, { where: { id: servicioMonitoreo.id } });
 					}
-					const datosUpdateCertificado = {
-						estatus: "N",
-						updatedAt: moment().tz('America/Mexico_City')
-					}
-					await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
-					await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
 				}
 			}
 		}
@@ -451,11 +450,6 @@ async function reTimbrarNotaCredito(req, res){
 	}
 }
 
-async function getFiltroMarcaFactura(idMarca){
-	const filtro = {"or":[],"and":[{"property": "factura.id_marca","value": idMarca,"operator": "=="}]}
-	const Filter = new Filtros({filtros:filtro,eliminados:'true'})
-	return await Filter.get()
-}
 
 async function show(req, res){
 	const { id } = req.params;
@@ -590,21 +584,18 @@ async function show(req, res){
 				element.primer_documento = null
                 for(const detalle of element.factura.factura_detalles){
                     const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-                    var impuestoCertificado
-                    var subtotal
-                    var descuento
-                    if(pedidoFactura != null){
-                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-                        subtotal = certificado.detalle_certificado[0].subtotal
-                        descuento = certificado.detalle_certificado[0].descuento_monto
-                        impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-						element.primer_documento = "Certificado"
+					if(pedidoFactura != null){
+						if(pedidoFactura.id_certificado !== null){
+							element.primer_documento = "Certificado"
+						}else if(pedidoFactura.id_servicio_ontrack !== null){
+							element.primer_documento = "Servicio Monitoreo"
+						}
                     } else{
 						element.primer_documento = "Factura Manual"
 					}
-                    const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-                    const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-                    const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
+                    const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+                    const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+                    const impuesto = parseFloat(detalle.impuesto ?? 0)
                     const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
                     subtotalFactura = subtotalFactura + (valorUnitario * cantidad )
                     descuentoFactura = descuentoFactura + descuentoGeneral
@@ -649,8 +640,7 @@ async function show(req, res){
                 const getRelaciones =  [ 'agente_operativo','agente_venta_1' ]
                 const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
                 const relacionesAgente = await findRelacionesAgentes.getRelaciones()
-                const idMarca = 1
-                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id, id_marca: idMarca}, include:relacionesAgente,paranoid: false})
+				let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id}, include:relacionesAgente,paranoid: false})
                 const clienteDetalles = await db.sequelize.models.cliente_detalles.findByPk(clienteRazonSocial.cliente.id_detalle_cliente,{include:['agente_credito_cobranza']})
                 const relsCliente = [
 					'categoria_cliente',
@@ -722,9 +712,16 @@ async function destroy(req,res){
 			for(const facturaDetalle of factura.factura_detalles){
 				const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
 				if(pedidoFactura != null){
-					const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { paranoid: false });
-					if((pedidoFactura.estatus === "F" || certificado.estatus === "F") && registroAEliminar.tipo == "C"){
-						return res.status(400).send({ status: false, msg: `No se pudo cancelar. Algún pedido de factura o certificado ligado a la nota de credito se refacturo nuevamente.` });
+					if(pedidoFactura.id_certificado !== null){
+						const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { paranoid: false });
+						if((pedidoFactura.estatus === "F" || certificado.estatus === "F") && registroAEliminar.tipo == "C"){
+							return res.status(400).send({ status: false, msg: `No se pudo cancelar. Algún pedido de factura o certificado ligado a la nota de credito se refacturo nuevamente.` });
+						}
+					}else if(pedidoFactura.id_servicio_ontrack !== null){
+						const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+						if((pedidoFactura.estatus === "F" || servicioMonitoreo.estatus === "F") && registroAEliminar.tipo == "C"){
+							return res.status(400).send({ status: false, msg: `No se pudo cancelar. Algún pedido de factura o servicio monitoreo ligado a la nota de credito se refacturo nuevamente.` });
+						}
 					}
 				}
 			}
@@ -748,17 +745,31 @@ async function destroy(req,res){
 				for(const facturaDetalle of factura.factura_detalles){
 					const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(facturaDetalle.id_pedido_factura, { paranoid: false });
 					if(pedidoFactura != null){
-						const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { paranoid: false });
-						const datosUpdateDetalle = {
-							estatus: "F",
-							updatedAt: moment().tz('America/Mexico_City')
+						if(pedidoFactura.id_certificado !== null){
+							const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { paranoid: false });
+							const datosUpdateDetalle = {
+								estatus: "F",
+								updatedAt: moment().tz('America/Mexico_City')
+							}
+							const datosUpdateCertificado = {
+								estatus: "F",
+								updatedAt: moment().tz('America/Mexico_City')
+							}
+							await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+							await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
+						} else if(pedidoFactura.id_servicio_ontrack !== null){
+							const servicioMonitoreo = await db.sequelize.models.servicios_ontrack.findByPk(pedidoFactura.id_servicio_ontrack, {paranoid: false });
+							const datosUpdateDetalle = {
+								estatus: "F",
+								updatedAt: moment().tz('America/Mexico_City')
+							}
+							const datosUpdateServicioMonitoreo = {
+								estatus: "F",
+								updatedAt: moment().tz('America/Mexico_City')
+							}
+							await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
+							await servicioMonitoreo.update(datosUpdateServicioMonitoreo, { where: { id: servicioMonitoreo.id } });
 						}
-						const datosUpdateCertificado = {
-							estatus: "F",
-							updatedAt: moment().tz('America/Mexico_City')
-						}
-						await pedidoFactura.update(datosUpdateDetalle, { where: { id: pedidoFactura.id } });
-						await certificado.update(datosUpdateCertificado, { where: { id: certificado.id } });
 					}
 				}
 			}
@@ -910,21 +921,18 @@ async function exportar(req, res) {
 				element.primer_documento = null
                 for(const detalle of element.factura.factura_detalles){
                     const pedidoFactura = await db.sequelize.models.pedidos_factura.findByPk(detalle.id_pedido_factura, { paranoid: false });
-                    var impuestoCertificado
-                    var subtotal
-                    var descuento
-                    if(pedidoFactura != null){
-                        const certificado = await db.sequelize.models.certificados.findByPk(pedidoFactura.id_certificado, { include:['detalle_certificado'], paranoid: false });
-                        subtotal = certificado.detalle_certificado[0].subtotal
-                        descuento = certificado.detalle_certificado[0].descuento_monto
-                        impuestoCertificado = certificado.detalle_certificado[0].monto_iva
-						element.primer_documento = "Certificado"
+					if(pedidoFactura != null){
+						if(pedidoFactura.id_certificado !== null){
+							element.primer_documento = "Certificado"
+						}else if(pedidoFactura.id_servicio_ontrack !== null){
+							element.primer_documento = "Servicio Monitoreo"
+						}
                     } else{
 						element.primer_documento = "Factura Manual"
 					}
-                    const valorUnitario = parseFloat(detalle.precio_unitario ?? subtotal)
-                    const descuentoGeneral = parseFloat(detalle.descuento ?? descuento)
-                    const impuesto = parseFloat(detalle.impuesto ?? impuestoCertificado)
+					const valorUnitario = parseFloat(detalle.precio_unitario ?? 0)
+					const descuentoGeneral = parseFloat(detalle.descuento ?? 0)
+					const impuesto = parseFloat(detalle.impuesto ?? 0)
                     const cantidad = parseInt(detalle.cantidad != null ? detalle.cantidad : 1) 
                     subtotalFactura = subtotalFactura + (valorUnitario * cantidad )
                     descuentoFactura = descuentoFactura + descuentoGeneral
@@ -969,8 +977,7 @@ async function exportar(req, res) {
                 const getRelaciones =  [ 'agente_operativo','agente_venta_1' ]
                 const findRelacionesAgentes = new Relaciones(getRelaciones,getRelaciones,db.sequelize.models)
                 const relacionesAgente = await findRelacionesAgentes.getRelaciones()
-                const idMarca = 1
-                let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id, id_marca: idMarca}, include:relacionesAgente,paranoid: false})
+				let agentesCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:clienteRazonSocial.cliente.id}, include:relacionesAgente,paranoid: false})
                 const clienteDetalles = await db.sequelize.models.cliente_detalles.findByPk(clienteRazonSocial.cliente.id_detalle_cliente,{include:['agente_credito_cobranza']})
                 const relsCliente = [
 					'categoria_cliente',
@@ -996,11 +1003,9 @@ async function exportar(req, res) {
                 element.factura.agente_venta = agentesCliente !== null && agentesCliente !== undefined ? agentesCliente.agente_venta_1 : null
                 element.factura.total_factura = parseFloat(parseFloat(totalFactura).toFixed(2))
                 element.factura.saldo_saldado = parseFloat((totalFactura - (element.factura.cxc != null ? element.factura.cxc.saldo : 0)).toFixed(2))
-				
-				const cfdi  = await db.sequelize.models.cfdis.findOne({where:{id: element.cfdi.id}})
-				const xml = await xmlToJSON(cfdi.xml)
-				element.fecha_emision = moment(xml["cfdi:Comprobante"]["\$"]['Fecha']).tz('America/Mexico_City').format('DD-MM-YYYY HH:mm:ss')
-                element.tipo_cambio = parseFloat(xml["cfdi:Comprobante"]["\$"]['TipoCambio']).toLocaleString('es-US', { style: 'currency', currency: 'USD',  minimumFractionDigits: 4, maximumFractionDigits: 4  })
+				element.fecha_emision = element.createdAt.toISOString().slice(0, 19).replace('T', ' ');
+                const tc = await db.sequelize.models.tipos_cambio_futuro.findByPk(element.factura.factura_detalles[0].pedido_factura.certificado.id_tipo_cambio_futuro);
+                element.tipo_cambio = tc != null ? tc.tipo_cambio : '';
                 const nombreCliente = await db.sequelize.models.clientes.findByPk(element.factura.factura_detalles[0].pedido_factura === element.factura.factura_detalles[0].pedido_factura || element.factura.factura_detalles[0].pedido_factura === null ? element.factura.cliente.id : element.factura.factura_detalles[0].pedido_factura.certificado.id_cliente);
                 element.cliente = nombreCliente != null ? nombreCliente.nombre : '';
 			}
@@ -1039,7 +1044,7 @@ async function exportar(req, res) {
 		
 		return await reporte.gerReporteOneSheet(res,req);
 	} catch (error) {
-		console.log(error)
+		console.log('Error interno del servidor' +  error.toString())
 	}
 	
 }
@@ -1099,18 +1104,6 @@ async function getCuerpoCorreo(nameTpl){
     const rutaTpl = path.join(__dirname, '../tpls/emails', nameTpl);
     const contenido = fs.readFileSync(rutaTpl, 'utf8');
     return contenido;
-}
-
-async function xmlToJSON(xmlString){
-	const parser = new xml2js.Parser();
-	var xmlJSON = undefined
-	parser.parseString(xmlString, (err, result) => {
-	  if (err) {
-		xmlJSON = { status: false, msg: "Error al convertir XML a JSON", error: err.toString()};
-	  }
-	  xmlJSON = result
-	});
-	return xmlJSON
 }
 
 module.exports = {

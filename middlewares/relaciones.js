@@ -254,6 +254,15 @@ class Relaciones{
         
         pagos_proveedor_facturacion_registrados: 'pagos_proveedor_facturacion',
         pagos_proveedor_facturacion: 'pagos_proveedor_facturacion',
+        estatus_ontrack: "estatus_ontrack",
+        servicios_ontrack: "servicios_ontrack",
+        servicio_ontrack: "servicios_ontrack",
+        contactos_transportistas: "contactos_transportistas",
+        atributo_ontrack: "atributos_ontrack",
+        atributos_ontrack: "atributos_ontrack",
+        servicio_ontrack_detalles: "servicios_ontrack_detalles",
+        seguimiento_estatus: "seguimiento_estatus_ontrack",
+        oc_factura: "oc_factura"
     }
     relacionesValidas = []
     parametros = []
