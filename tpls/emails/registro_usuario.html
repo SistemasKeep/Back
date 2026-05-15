@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación de registro en Keepro - Acceso y cambio de contraseña</title>
+</head>
+
+<body>
+    <h1>¡Hola  {{$userName}}!</h1>
+    <h1>¡Bienvenido a Keepro!</h1>
+
+    <p>Estamos encantados de que te hayan registrado en nuestro sistema. Para completar el proceso de registro y
+        asegurar la seguridad de tu cuenta, es necesario que sigas los pasos a continuación:</p>
+
+    <ol>
+        <li>Ingresa a <a href="https://keepro.mx/" target="_blank">Keepro</a></li>
+        <li>Inicia sesión utilizando la siguiente información de acceso:</li>
+        <ul>
+            <li>Correo electrónico: {{$email}} </li>
+            <li>Contraseña temporal: {{$tempPassword}} </li>
+        </ul>
+        <li>Una vez que hayas iniciado sesión, te pediremos que cambies tu contraseña temporal por una nueva. Asegúrate
+            de elegir una contraseña segura y fácil de recordar.</li>
+    </ol>
+
+    <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactarnos a través de nuestro equipo de soporte.</p>
+</body>
+
+</html>

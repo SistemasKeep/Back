@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarifa Actualizada</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            color: #333333;
+            font-size: 16px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #066ab2;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            font-weight: bold;
+            color: #066ab2;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #777777;
+            text-align: center;
+        }
+
+        a {
+            color: #066ab2;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #066ab2;
+            color: #ffffff;
+            text-align: center;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #045a8d;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #dddddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .instructions {
+            background-color: #eaf4fc;
+            border-left: 4px solid #066ab2;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .additional-logos {
+            text-align: center;
+            margin-top: 30px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .additional-logos img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        .reference-image {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .reference-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Tarifa Actualizada para {{$nombreServicio}} </h1>
+        
+        <p>Estimados(as) colaboradores(as),</p>
+        
+        <p>Por medio de la presente, les informamos que se ha actualizado una tarifa para el servicio <span class="highlight">{{$nombreServicio}}</span> correspondiente a la oficina <span class="highlight">{{$nombreOficina}}</span> del cliente <span class="highlight">{{$nombreCliente}}</span>.</p>
+        
+		<p>Les solicitamos tener en cuenta esta actualización para todas las futuras gestiones relacionadas con este servicio.</p>
+        <p>A continuación, se detalla la tarifa antes y despues de la modificación. Válido a partir del {{$fechaCambio}} a las {{$horaCambio}}</p>
+        
+        <div class="instructions">
+            <h3>Detalles Generales</h3>
+            <p><span class="highlight">Servicio:</span> {{$nombreServicio}}</p>
+            <p><span class="highlight">Oficina:</span> {{$nombreOficina}}</p>
+            <p><span class="highlight">Cliente:</span> {{$nombreCliente}}</p>
+            <br>
+            <h3>Detalles antes de la Modificación</h3>
+            <p><span class="highlight">Proveedor:</span> {{$nombreProveedorAntes}}</p>
+            <p><span class="highlight">Tarifa del Cliente:</span> {{$tarifaClienteFinalAntes}}</p>
+            <p><span class="highlight">Minimo de venta:</span> {{$minimoVentaAntes}}</p>
+            <p><span class="highlight">Beneficiario:</span> {{$nombreBeneficiarioAntes}}</p>
+            <p><span class="highlight">Commodity:</span> {{$nombreCommodityAntes}}</p>
+            <p><span class="highlight">País de origen:</span> {{$nombrePaisOrigenAntes}}</p>
+            <p><span class="highlight">País de destino:</span> {{$nombrePaisDestinoAntes}}</p>
+            <p><span class="highlight">Límite máximo de suma asegurada:</span> {{$limiteSuperiorAntes}}</p>
+            <p><span class="highlight">Límite mínimo de suma asegurada:</span> {{$limiteInferiorAntes}}</p>
+            <p><span class="highlight">Fecha de vencimiento:</span> {{$fechaVencimientoAntes}}{{$horaVencimientoAntes}}</p>
+            <p><span class="highlight">Uso limitado:</span> {{$usoLimitadoAntes}}</p>
+            <br>
+            <h3>Detalles despues de la Modificación</h3>
+            <p><span class="highlight">Proveedor:</span> {{$nombreProveedorDespues}}</p>
+            <p><span class="highlight">Tarifa del Cliente:</span> {{$tarifaClienteFinalDespues}}</p>
+            <p><span class="highlight">Minimo de venta:</span> {{$minimoVentaDespues}}</p>
+            <p><span class="highlight">Beneficiario:</span> {{$nombreBeneficiarioDespues}}</p>
+            <p><span class="highlight">Commodity:</span> {{$nombreCommodityDespues}}</p>
+            <p><span class="highlight">País de origen:</span> {{$nombrePaisOrigenDespues}}</p>
+            <p><span class="highlight">País de destino:</span> {{$nombrePaisDestinoDespues}}</p>
+            <p><span class="highlight">Límite máximo de suma asegurada:</span> {{$limiteSuperiorDespues}}</p>
+            <p><span class="highlight">Límite mínimo de suma asegurada:</span> {{$limiteInferiorDespues}}</p>
+            <p><span class="highlight">Fecha de vencimiento:</span> {{$fechaVencimientoDespues}}{{$horaVencimientoDespues}}</p>
+            <p><span class="highlight">Uso limitado:</span> {{$usoLimitadoDespues}}</p>
+
+        </div>
+
+        <p>Les agradecemos asegurarse de aplicar esta tarifa en sus operaciones, gestiones de venta, soporte y atención al cliente. En caso de tener alguna consulta o requerir mayor información, por favor no duden en contactarse con el departamento correspondiente.</p>
+        
+        <div class="footer">
+            <p>Este correo es generado automáticamente a través de nuestro sistema. En caso de dudas o aclaraciones, favor de ponerse en contacto con su ejecutivo de operaciones asignado, quien le atenderá con gusto.</p>
+        </div>
+		
+
+      
+    </div>
+
+</body>
+</html>

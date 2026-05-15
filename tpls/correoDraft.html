@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correo Profesional</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #e8f0f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            text-align: left;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #4f5b67;
+            padding-bottom: 10px;
+        }
+
+        p {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .boldTxt {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .highlight {
+            color: #c57b53;
+        }
+
+        .section-title {
+            font-size: 22px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #c57b53;
+            padding-bottom: 5px;
+        }
+
+        .card {
+            background-color: #f7f9fc;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .card ul {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+
+        .card ul li {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        .important {
+            background-color: #fff8e1;
+            padding: 20px;
+            border-left: 6px solid #c57b53;
+            font-size: 16px;
+            color: #333;
+            margin-top: 25px;
+        }
+
+        .important p {
+            margin: 0;
+        }
+
+        blockquote {
+            background-color: #f1f8ff;
+            padding: 15px;
+            border-left: 5px solid #5d8b9e;
+            font-size: 16px;
+            color: #333;
+            font-style: italic;
+            margin-top: 30px;
+        }
+
+        blockquote p {
+            margin: 0;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 14px;
+            color: #777;
+            margin-top: 50px;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #c57b53;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+
+        .cta-button:hover {
+            background-color: #b06847;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+         <h1>Apreciable cliente, es un placer atenderte.</h1>
+        
+        <p>Adjuntamos el DRAFT referente a tu solicitud. <span class="boldTxt">Quedamos atentos a tu visto bueno para poder llevar a cabo la emisión del certificado correspondiente</span>, así como de la confirmación de tus datos para la elaboración de tu factura:</p>
+        
+        <div class="card">
+            <div class="section-title">Detalles a facturar:</div>
+            <ul>
+                <li><strong>El monto total sin IVA a facturar por este servicio:</strong> {{$importe_encabezado}} {{$moneda}} <br><span class="subtle">*El costo de la póliza puede ser el mínimo de venta (puede consultar observaciones en su hoja de cotización).</span></li>
+            <li><strong>La razón social a la cual se va a facturar este servicio:</strong> {{$razon_social_cliente}}</li>
+            </ul>
+        </div>
+
+        <div class="important">
+            <p><strong>IMPORTANTE</strong></p>
+            <p>El <span class="boldTxt highlight">DRAFT</span> es un <span class="highlight">borrador</span> que carece de validez legal, y su finalidad es únicamente mostrar cómo quedaría tu certificado de cobertura. La cobertura entrará en vigor una vez que concluyas la emisión del <span class="boldTxt">CERTIFICADO correspondiente</span>, el cual tiene carácter de <span class="boldTxt">contrato legal</span> de transferencia de riesgo entre la Compañía Aseguradora, el Solicitante y el Beneficiario.</p>
+            <p>En caso de ocurrir un siniestro, el documento legal que amparará la cobertura contratada y que debe presentarse para poder hacer un reclamo ante la aseguradora es el <span class="boldTxt">CERTIFICADO DE COBERTURA</span>.</p>
+        </div>
+
+         
+        <div class="card">
+            <div class="section-title"></div>
+            <ul>
+		
+		<p>Sobre el mismo DRAFT, podrás solicitar o realizar los cambios necesarios en los datos del embarque por asegurar. Una vez que obtengas tu CERTIFICADO, <span class="boldTxt">ya no se podrán realizar cambios al mismo</span>, ya que con este acto se celebra el contrato legal de transferencia de riesgo.</p>
+        
+        <p><span class="boldTxt">El CERTIFICADO deberá quedar emitido antes del {{$fecha_salida}}, que corresponde a la fecha de salida de los bienes a ruta.</span></p>
+        
+        <p><span class="boldTxt">En caso de no obtener tu certificado de cobertura antes de dicha fecha y hora de salida, no será posible otorgar la cobertura solicitada.</span> Además, si se realiza un reclamo por siniestro con un certificado emitido posterior a la fecha y hora de salida de los bienes asegurados, esos bienes quedarán fuera de cobertura automáticamente.</p>
+        
+        <p>Durante el proceso de alta, tu Ejecutivo Comercial te compartió los Términos y Condiciones para la contratación del seguro de transporte de carga. Si no los has recibido, extraviado o no los encuentras, por favor solicítalos con urgencia a tu Ejecutivo Comercial o Ejecutivo de Operaciones.</p>
+        
+        
+            <p><strong>Definición general de <span class="boldTxt">contrato legal</span></strong></p>
+            <p>Un contrato legal es un acuerdo jurídico entre dos o más partes que genera derechos y obligaciones. Los contratos están regulados en el Código Civil Federal de México, artículos 1792 a 1859.</p>
+      
+        
+       
+            <p><strong>Definición de contrato según el Artículo 1° de la LEY SOBRE EL CONTRATO DE SEGURO</strong></p>
+            <p>Por el contrato de seguro, la empresa aseguradora se obliga, mediante una prima, a resarcir un daño o pagar una suma de dinero al verificarse la eventualidad prevista en el contrato. Se recomienda leer los Artículos del 2° al 18° de la misma Ley.</p>
+       
+        
+        <div class="footer">
+            <p>Saludos cordiales.</p>
+         
+        </div>
+		
+		   </div>

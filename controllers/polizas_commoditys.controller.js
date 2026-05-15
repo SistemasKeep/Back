@@ -1,0 +1,709 @@
+'use strict'
+const {db} = require('../models');
+const moment = require('moment-timezone');
+const {Validaciones} = require('../middlewares/validaciones');
+const { Relaciones } = require('../middlewares/relaciones');
+const {CryptoMiddleware} = require('../middlewares/desEncrpJson');
+const { RelacionesHistorico } = require('../middlewares/relacionesHistorico');
+const { Filtros } = require('../middlewares/filtros');
+
+
+async function index(req, res) {
+	const page = parseInt(Number.isInteger(parseInt(req.query.page)) && Math.sign(parseInt(req.query.page)) === 1 ? req.query.page : 1);
+	const pageSize = parseInt(Number.isInteger(parseInt(req.query.pageSize)) && Math.sign(parseInt(req.query.pageSize)) === 1 ? req.query.pageSize : 10);
+	var orden = req.query.orden;
+	if(orden != 'ASC' && orden != 'DESC'){
+		orden = 'ASC';
+	}
+	var campoOrden = req.query.campoOrden;
+	const camposModelo = Object.keys(db.sequelize.models.polizas_commoditys.rawAttributes);
+	if(!camposModelo.includes(campoOrden)){
+		campoOrden = 'createdAt';
+	}
+	const filtro = await getFiltro(req.query);
+	const offset = (page - 1) * pageSize;
+	const limit = pageSize;
+
+	try {
+		const perfilesValidos = ['poliza_detalle', 'commoditie', 'all']
+		var relaciones = []
+		if(perfilesValidos.includes(req.query.perfil)){
+			const parametrosRelaciones = {
+				poliza_detalle: [
+					'poliza_detalle.poliza.proveedor.moneda',
+					'poliza_detalle.poliza.proveedor.conceptos_presupuesto',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.archivo',
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.ubicacion_defecto',
+					'poliza_detalle.poliza.proveedor.proveedor_tipo',
+					'poliza_detalle.poliza.tipo_cobertura',
+				],
+				commoditie: ['commoditie.categoria'],
+				all: [
+					'poliza_detalle.poliza.proveedor.moneda',
+					'poliza_detalle.poliza.proveedor.conceptos_presupuesto',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.archivo',
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.ubicacion_defecto',
+					'poliza_detalle.poliza.proveedor.proveedor_tipo',
+					'poliza_detalle.poliza.tipo_cobertura',
+					'commoditie.categoria'
+				]
+			}
+			const findRelaciones = new Relaciones(parametrosRelaciones[req.query.perfil],parametrosRelaciones[req.query.perfil],db.sequelize.models)
+			relaciones = await findRelaciones.getRelaciones();
+		}else{
+			try {
+				const relacionesValidas = [ 
+					'poliza_detalle',
+					'poliza_detalle.poliza',
+					'poliza_detalle.poliza.proveedor',
+					'poliza_detalle.poliza.proveedor.moneda',
+					'poliza_detalle.poliza.proveedor.conceptos_presupuesto',
+					'poliza_detalle.poliza.proveedor.marca',
+					'poliza_detalle.poliza.proveedor.marca.domicilio',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.pais',
+					'poliza_detalle.poliza.proveedor.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen',
+					'poliza_detalle.poliza.proveedor.almacen.marca',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen.ubicacion_defecto',
+					'poliza_detalle.poliza.proveedor.proveedor_tipo',
+					'poliza_detalle.poliza.tipo_cobertura',
+					'commoditie',
+					'commoditie.categoria'
+				]
+				const findRelaciones = new Relaciones(relacionesValidas,req.query.with.split(","),db.sequelize.models)
+				relaciones = await findRelaciones.getRelaciones();
+			} catch (error) {
+				relaciones = []
+			}
+		}
+
+		const docs = await db.sequelize.models.polizas_commoditys.findAll({
+			paranoid: false,
+			page: page || 1,
+			include: relaciones,
+			paginate: pageSize || 10,
+			order: [[campoOrden, orden]],
+			where: filtro,
+			offset,
+			limit
+		})
+		
+		const dataDocs = await db.sequelize.models.polizas_commoditys.count({
+		    paranoid: false,
+		    include: relaciones,
+		    where: filtro
+		});
+		
+		const totalCount = dataDocs;
+		const totalPages = Math.ceil(totalCount / pageSize);
+		const nextPage = page < totalPages ? page + 1 : null;
+		const prevPage = page > 1 ? page - 1 : null;
+		const fullUrl = `${req.protocol}://${req.get('host')}/api/polizasCommoditys`;
+		const nextPageUrl = nextPage ? `${fullUrl}?page=${nextPage}&pageSize=${pageSize}&orden=${orden}` + ((req.query.filter != '' && req.query.filter != undefined) ? `&filter=${req.query.filter}`:'') : null;
+		const prevPageUrl = prevPage ? `${fullUrl}?page=${prevPage}&pageSize=${pageSize}&orden=${orden}` + ((req.query.filter != '' && req.query.filter != undefined) ? `&filter=${req.query.filter}`:'') : null;
+		
+		return res.status(200).send({
+			success: true,
+			currentPage: page,
+			nextPage: nextPageUrl,
+			prevPage: prevPageUrl,
+			pages: totalPages,
+			total: totalCount,
+			data: docs
+		});
+		
+	} catch (error) {
+		return res.status(500).json({ success: false, error: 'Error interno del servidor', error: error.toString() });
+	}
+}
+
+async function getFiltro(parametros){
+	var filtro
+	try {
+		filtro = JSON.parse(parametros.filter)
+	} catch (error) {
+		filtro = undefined
+	}
+	var eliminados = parametros.eliminados;
+	const Filter = new Filtros({filtros:filtro,eliminados:eliminados})
+	return await Filter.get()
+}
+
+async function store(req, res){try {
+		const parametros = req.body;
+		var registro = {
+			createdAt: moment().tz('America/Mexico_City'),
+			updatedAt: moment().tz('America/Mexico_City')
+		}
+		let obligatorios = [
+            {campo:'idPolizaDetalle', tipo:'model', model:db.sequelize.models.poliza_detalles},
+            {campo:'idCommodity', tipo:'model', model:db.sequelize.models.commoditys},
+			{campo: 'isSensibleRobo', tipo: 'boolean'}
+		]
+		registro = await Validaciones.validParametros(req, res,obligatorios,registro);
+		if(!registro){
+			return '';
+		}
+		const validosOpcionales =[
+            {campo:'limiteFerroviario', tipo:'number'},
+			{campo:'limiteAereo', tipo:'number'},
+			{campo:'limiteTerrestre', tipo:'number'},
+			{campo:'limiteMaritimo', tipo:'number'}
+        ]
+		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(registro,false,validosOpcionales,parametros,res)
+		if(dataValidarOpcionales == undefined){
+			return undefined;
+		}
+		registro = dataValidarOpcionales[0]
+		const registrosEncontrados = await db.sequelize.models.polizas_commoditys.findAll({
+			where: {
+				[db.Sequelize.Op.and]: {
+					id_poliza_detalle: parametros.idPolizaDetalle,
+                    id_commodity: parametros.idCommodity,
+					deletedAt: null
+				}
+			}
+		});
+		if(registrosEncontrados.length > 0){
+			var regExistente = false
+			await registrosEncontrados.forEach(registro => {
+				if(registro.id_poliza_detalle == parametros.idPolizaDetalle && registro.id_commodity == parametros.idCommodity){
+						regExistente = true;
+						res.status(400).send({ status: false, msg: "Registro existente"});
+				 }
+			});
+			if(regExistente){
+				return '';
+			}
+		}
+		registro.id_usuario_registro = req.usuario.id
+		const nuevoRegistro = await db.sequelize.models.polizas_commoditys.create(registro);
+		return res.status(200).send({ status: true, msg: "Elemento registrado correctamente", data: {id:nuevoRegistro.id}});
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
+
+async function storeList(req, res){
+	const idSensibleRobo = [ 5, 7, 8, 9, 10, 11, 21, 23, 25, 28, 29, 30, 32, 33, 34, 35, 39, 40, 42, 43, 44, 46, 49, 53, 56, 57, 58, 59, 61, 65, 66, 71, 72, 73, 74, 81, 82, 83, 84, 90, 91, 92, 93, 94, 96, 104, 105, 106, 108, 110, 111, 112, 117, 123, 130, 145, 147, 148, 151, 152, 153, 154, 155, 158, 159, 161,]
+	const commodities = [ ]
+	var registrosAlmacenados = 0
+	const commoditiesNoSaved = []
+	for (let index = 0; index < commodities.length; index++) {
+		const commodity = commodities[index];
+		const commoditie = await db.sequelize.models.commoditys.findOne({
+			where: {
+				descripcion: commodity[0].toUpperCase(),
+				//descripcion: {[db.Sequelize.Op.like]: `%${commodity[0]}%`},
+				deletedAt: null
+			}
+		})
+		if(commoditie != null){
+			const registroToSave = {
+				"id_poliza_detalle": 12,// 3-4-5-6-7-8
+				"id_commodity": commoditie.id,// 1-2-3
+				"limite_ferroviario": commodity[3],
+				"limite_aereo": commodity[2],
+				"limite_terrestre": commodity[4],
+				"limite_maritimo": commodity[1],
+				"is_sensible_robo": idSensibleRobo.includes(commoditie.id)
+			}
+			const registrosEncontrados = await db.sequelize.models.polizas_commoditys.findAll({
+				where: {
+					[db.Sequelize.Op.and]: {
+						id_poliza_detalle: registroToSave.id_poliza_detalle,
+						id_commodity: registroToSave.id_commodity,
+						deletedAt: null
+					}
+				}
+			});
+			var regExistente = false
+			if(registrosEncontrados.length > 0){
+				var regExistente = false
+				await registrosEncontrados.forEach(registro => {
+					if(registro.id_poliza_detalle == registroToSave.id_poliza_detalle && registro.id_commodity == registroToSave.id_commodity){
+							regExistente = true;
+					 }
+				});
+			}
+			if(!regExistente){
+				registrosAlmacenados = registrosAlmacenados + 1
+				const nuevoRegistro = await db.sequelize.models.polizas_commoditys.create(registroToSave);
+			}else{
+				commoditiesNoSaved.push(commodity[0])
+			}
+		}
+	}
+	return res.status(200).send({ status: true, msg: "Elemento registrado correctamente", registrosAlmacenados: registrosAlmacenados, total: commodities.length,commoditiesNoSaved:commoditiesNoSaved});
+}
+
+async function show(req, res){
+	const { id } = req.params;
+	
+	try {
+		const perfilesValidos = ['poliza_detalle', 'commoditie', 'all']
+		var relaciones = []
+		if(perfilesValidos.includes(req.query.perfil)){
+			const parametrosRelaciones = {
+                poliza_detalle: [
+                	'poliza_detalle.poliza.proveedor.moneda',
+					'poliza_detalle.poliza.proveedor.conceptos_presupuesto',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.archivo',
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domiscilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.ubicacion_defecto',
+					'poliza_detalle.poliza.proveedor.proveedor_tipo',
+					'poliza_detalle.poliza.tipo_cobertura',
+                ],
+				commoditie: ['commoditie.categoria'],
+				all: [
+                	'poliza_detalle.poliza.proveedor.moneda',
+					'poliza_detalle.poliza.proveedor.conceptos_presupuesto',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.archivo',
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.regimen_fiscal', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.pais.continente', 
+					'poliza_detalle.poliza.proveedor.almacen.marca.dato_facturacion.nacionalidad_timbrado.continente',
+					'poliza_detalle.poliza.proveedor.almacen.ubicacion_defecto',
+					'poliza_detalle.poliza.proveedor.proveedor_tipo',
+                	'poliza_detalle.poliza.tipo_cobertura',
+					'commoditie.categoria'
+				]
+			}
+			const findRelaciones = new Relaciones(parametrosRelaciones[req.query.perfil],parametrosRelaciones[req.query.perfil],db.sequelize.models)
+			relaciones = await findRelaciones.getRelaciones()
+		}else{
+			try {
+				const relacionesValidas = [ 
+					'poliza_detalle',
+					'poliza_detalle.poliza',
+					'poliza_detalle.poliza.proveedor',
+					'poliza_detalle.poliza.proveedor.moneda',
+					'poliza_detalle.poliza.proveedor.conceptos_presupuesto',
+					'poliza_detalle.poliza.proveedor.marca',
+					'poliza_detalle.poliza.proveedor.marca.domicilio',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais',
+					'poliza_detalle.poliza.proveedor.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.pais',
+					'poliza_detalle.poliza.proveedor.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen',
+					'poliza_detalle.poliza.proveedor.almacen.marca',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais',
+					'poliza_detalle.poliza.proveedor.almacen.marca.domicilio.estado.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais',
+					'poliza_detalle.poliza.proveedor.almacen.marca.pais.continente',
+					'poliza_detalle.poliza.proveedor.almacen.marca.archivo',
+					'poliza_detalle.poliza.proveedor.almacen.ubicacion_defecto',
+					'poliza_detalle.poliza.proveedor.proveedor_tipo',
+                    'poliza_detalle.poliza.tipo_cobertura',
+					'commoditie',
+					'commoditie.categoria'
+				]
+				
+				const findRelaciones = new Relaciones(relacionesValidas,req.query.with.split(","),db.sequelize.models)
+				relaciones = await findRelaciones.getRelaciones()
+			} catch (error) {
+				relaciones = []
+			}
+		}
+		const registroEncontrado = await db.sequelize.models.polizas_commoditys.findByPk(id,{include:relaciones,paranoid: false});
+		if(registroEncontrado != null){
+			return res.status(200).send({ status: true, data: registroEncontrado.toJSON()});
+		}
+		return res.status(400).send({ status: false, msg: "Registro no existe" });
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
+
+async function update(req, res){
+	const parametros = req.body;
+	try {
+		const { id } = req.params;
+		let seEdita = false;
+		var datosUpdate = {updatedAt: moment().tz('America/Mexico_City')}
+	
+		const validosOpcionales = [
+			{campo:'idPolizaDetalle', tipo:'model', model:db.sequelize.models.poliza_detalles},
+            {campo:'idCommodity', tipo:'model', model:db.sequelize.models.commoditys},
+			{campo:'limiteFerroviario', tipo:'number'},
+			{campo:'limiteAereo', tipo:'number'},
+			{campo:'limiteTerrestre', tipo:'number'},
+			{campo:'limiteMaritimo', tipo:'number'},
+			{campo: 'isSensibleRobo', tipo: 'boolean'}
+		]
+		const dataValidarOpcionales = await Validaciones.validParametrosOpcionales(datosUpdate,false,validosOpcionales,parametros,res)
+		if(dataValidarOpcionales == undefined){
+			return undefined;
+		}
+		datosUpdate = dataValidarOpcionales[0]
+		seEdita = dataValidarOpcionales[1]
+		if(!seEdita){
+			return res.status(200).send({ status: true, msg: "Registro no editado" });
+		}
+		const registroAEditar = await db.sequelize.models.polizas_commoditys.findByPk(id);
+		if(registroAEditar == null){
+			return res.status(400).send({ status: false, msg: "Registro no existe" });
+		}
+		if(registroAEditar.deletedAt != null){
+			return res.status(400).send({ status: false, msg: "Registro eliminado" });
+		}
+		var whereFind = {
+			where: {
+				[db.Sequelize.Op.and]: {
+					id_poliza_detalle: parametros.idPolizaDetalle != undefined ? parametros.idPolizaDetalle : registroAEditar.id_poliza_detalle,
+                    id_commodity: parametros.idCommodity != undefined ? parametros.idCommodity : registroAEditar.id_commodity,
+                    deletedAt: null
+				}
+			}
+		}
+		const registrosEncontrados = await db.sequelize.models.polizas_commoditys.findAll(whereFind);
+		if(registrosEncontrados.length > 0){
+			var regExistente = false
+			await registrosEncontrados.forEach(registro => {
+				if((registro.id_poliza_detalle == (parametros.idPolizaDetalle != undefined ? parametros.idPolizaDetalle : registroAEditar.id_poliza_detalle) &&
+                    registro.id_commodity == (parametros.idCommodity != undefined ? parametros.idCommodity : registroAEditar.id_commodity)) && 
+                    registro.id != id)
+                    {
+						regExistente = true;
+						res.status(400).send({ status: false, msg: "Registro existente"});
+			        }
+			});
+			if(regExistente){
+				return '';
+			}
+		}
+
+		// registro de historial
+		var registro2 = {
+			id_usuario_registro: req.usuario.id,
+			id_registro: parseInt(id),
+			tabla: db.sequelize.models.polizas_commoditys.name.toUpperCase(),
+			accion: 'EDICION',
+			createdAt: moment().tz('America/Mexico_City')
+		}
+		
+		//encriptación para actualizar
+		const stringEncriptado = await CryptoMiddleware.encriptarJSON(registroAEditar);
+		registro2.encriptacion_previa = stringEncriptado;
+
+		const registrosActuales = await registroAEditar.update(datosUpdate, { where: { id: id } });
+		
+		const stringEncriptado2 = await CryptoMiddleware.encriptarJSON(registrosActuales);
+		registro2.encriptacion_posterior = stringEncriptado2;
+		const  datosHistoricos = await db.sequelize.models.historicos.create(registro2);
+
+		return res.status(200).send({ status: true, msg: "Registro editado con éxito"});
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
+
+async function destroy(req,res){
+	const { id } = req.params;
+	if(!Number.isInteger(parseInt(id))){
+		res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
+		return false
+	} 
+	
+	try {
+		const registroAEliminar = await db.sequelize.models.polizas_commoditys.findByPk(id);
+		if(registroAEliminar != null){
+			let canDelete = true
+			const modelosUtilizados = []
+			for (const modelo of Object.values(db.sequelize.models)) {
+				let asociaciones = modelo.associations
+				for (const asociacion of Object.values(asociaciones)) {
+					if(asociacion.target.name == db.sequelize.models.polizas_commoditys.name){
+						let where = {}
+						if(asociacion.associationType != 'HasMany'){
+							where[asociacion.foreignKey] = registroAEliminar.id
+							let encontrados = await modelo.findAll({ where: where });
+							if(encontrados.length > 0 && !modelosUtilizados.includes(modelo.name)){
+								canDelete = false
+								modelosUtilizados.push(modelo.name)
+							}
+						}
+					}
+				}
+			}
+			if(!canDelete){
+				return res.status(400).send({ status: false, msg: `No se pudo eliminar. El elemento actualmente está siendo referenciado en los modelos [${modelosUtilizados}].` });
+			}
+			if(registroAEliminar.deletedAt != null){
+				return res.status(400).send({ status: false, msg: "Registro eliminado" });
+			}
+
+			// registro de historial
+			var registro2 = {
+				id_usuario_registro: req.usuario.id,
+				id_registro: parseInt(id),
+				tabla: db.sequelize.models.polizas_commoditys.name.toUpperCase() ,
+				accion: 'ELIMINAR',
+				createdAt: moment().tz('America/Mexico_City')
+			}
+
+			//encriptación para eliminar
+			const stringEncriptado = await CryptoMiddleware.encriptarJSON(registroAEliminar);
+			registro2.encriptacion_previa = stringEncriptado;
+
+			const registrosActuales = await registroAEliminar.destroy({ where: { id: id } });
+			
+			const stringEncriptado2 = await CryptoMiddleware.encriptarJSON(registrosActuales);
+			registro2.encriptacion_posterior = stringEncriptado2;
+			const datosHistoricos = await db.sequelize.models.historicos.create(registro2);
+		
+			return res.status(200).send({ status: true, msg: "Registro eliminado con éxito"});
+		}
+		return res.status(400).send({ status: false, msg: "Registro no existe" });
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
+
+async function restaurar(req,res){
+	const { id } = req.params;
+	if(!Number.isInteger(parseInt(id))){
+		res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
+		return false
+	} 
+	
+	try {
+		const registroARestaurar = await db.sequelize.models.polizas_commoditys.findByPk(id,{ paranoid: false });
+		if(registroARestaurar != null){
+			if(registroARestaurar.deletedAt != null){
+				const registrosEncontrados = await db.sequelize.models.polizas_commoditys.findAll({
+					where: {
+						[db.Sequelize.Op.or]: {
+							id_poliza_detalle: registroARestaurar.id_poliza_detalle,
+                            id_commodity: registroARestaurar.id_commodity,
+						},
+						deletedAt: null
+					}
+				});
+
+				if(registrosEncontrados.length > 0){
+					var regExistente = false
+					await registrosEncontrados.forEach(registro => {
+						if((registro.id_poliza_detalle == registroARestaurar.id_poliza_detalle &&
+                            registro.id_commodity == registroARestaurar.id_commodity) &&
+							registro.id != id){
+								regExistente = true;
+								res.status(400).send({ status: false, msg: "Registro existente"});
+						}
+					});
+					if(regExistente){
+						return '';
+					}
+				}
+
+				// registro de historial
+				var registro2 = {
+					id_usuario_registro: req.usuario.id,
+					id_registro: parseInt(id),
+					tabla: db.sequelize.models.polizas_commoditys.name.toUpperCase(),
+					accion: 'RESTAURAR',
+					createdAt: moment().tz('America/Mexico_City')
+				}
+				
+				//encriptación para restaurar
+				const stringEncriptado = await CryptoMiddleware.encriptarJSON(registroARestaurar);
+				registro2.encriptacion_previa = stringEncriptado;
+				
+				const registrosActuales = await registroARestaurar.restore();
+				
+				const stringEncriptado2 = await CryptoMiddleware.encriptarJSON(registrosActuales);
+				registro2.encriptacion_posterior = stringEncriptado2;
+				const  datosHistoricos = await db.sequelize.models.historicos.create(registro2);
+				
+				return res.status(200).send({ status: true, msg: "Registro restaurado con éxito"});
+			}
+			return res.status(400).send({ status: false, msg: "Registro no eliminado" });
+		}
+		return res.status(400).send({ status: false, msg: "Registro no existe" });
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
+	} 
+}
+
+async function indexHistoricos(req, res) {
+	const { id } = req.params;
+	if(!Number.isInteger(parseInt(id))){
+		res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
+		return false
+	} 
+    const filtro = await getFiltro(req.query);
+
+	var whereFind = {
+		where: {
+			id_registro: id,
+			tabla: db.sequelize.models.polizas_commoditys.name.toUpperCase()
+		}
+	}
+	const registrosEncontrados = await db.sequelize.models.historicos.findAll(whereFind);
+	const data = []
+	for (let index = 0; index < registrosEncontrados.length; index++) {
+		let reg = {}
+		const registro = registrosEncontrados[index];
+		let usuario = await db.sequelize.models.usuarios.findByPk(registro.id_usuario_registro);
+		reg.id = registro.id
+		reg.usuario_registro = {id: usuario.id, nombre: usuario.nombre}
+		reg.accion = registro.accion
+		let datosDesencriptadosPrevia = await CryptoMiddleware.desencriptarJSON(registro.encriptacion_previa)
+		let datosDesencriptadosPosterior = await CryptoMiddleware.desencriptarJSON(registro.encriptacion_posterior)
+		reg.encriptacion_previa = datosDesencriptadosPrevia
+		reg.encriptacion_posterior = datosDesencriptadosPosterior
+		reg.createdAt = registro.createdAt
+		data.push(reg)
+	}
+	return res.status(200).send({
+		success: true,
+		total: data.length,
+		data: data
+	});
+}
+
+async function showHistoricos(req, res) {
+	const { id } = req.params;
+	const perfilesValidos = ['all'];
+	var generarRelaciones = false;
+	if(perfilesValidos.includes(req.query.perfil)){
+		if(req.query.perfil == 'all'){
+			generarRelaciones =  true;
+		}
+	}
+	if(!Number.isInteger(parseInt(id))){
+		res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
+		return false;
+	} 
+    let reg = {};
+	let registro = await db.sequelize.models.historicos.findByPk(id);
+
+	if(registro === null){
+		return res.status(400).send({ status: false, msg: "Registro no existe" });
+	} 
+	if(registro.tabla != db.sequelize.models.polizas_commoditys.name.toUpperCase()){
+		return res.status(400).send({ status: false, msg: "Registro no pertenece al crud polizas_commoditys" });
+	} 
+	let usuario = await db.sequelize.models.usuarios.findByPk(registro.id_usuario_registro);
+	reg.id = registro.id;
+	reg.usuario_registro = {id: usuario.id, nombre: usuario.nombre};
+	reg.accion = registro.accion;
+	let datosDesencriptadosPrevia = await CryptoMiddleware.desencriptarJSON(registro.encriptacion_previa);
+	let datosDesencriptadosPosterior = await CryptoMiddleware.desencriptarJSON(registro.encriptacion_posterior);
+	if(generarRelaciones){
+		reg.encriptacion_previa = await getRelaciones(datosDesencriptadosPrevia);
+		reg.encriptacion_posterior = await getRelaciones(datosDesencriptadosPosterior);
+	}
+	reg.encriptacion_previa = datosDesencriptadosPrevia;
+	reg.encriptacion_posterior = datosDesencriptadosPosterior;
+	reg.createdAt = registro.createdAt;
+	return res.status(200).send({
+		success: true,
+		data: reg
+	});
+}
+
+async function getRelaciones(registro){
+	const relaciones = [];
+	//Se obtienen las relaciones BelongsTo
+	for (const key in registro) {
+		let arrayCampo = key.split("_");
+		if(arrayCampo.length > 1 && arrayCampo.includes("id")){
+			let nameRelacion = "";
+			for (let index = 0; index < arrayCampo.length; index++) {
+				const ler = arrayCampo[index];
+				if(index == 1){
+					nameRelacion = nameRelacion  + ler;
+				} else if(index > 1){
+					nameRelacion = nameRelacion  + "_" + ler;
+				}
+			}
+			relaciones.push(nameRelacion)
+		}
+	}
+	const Relaciones = new RelacionesHistorico(relaciones,db.sequelize.models,registro);
+	registro = await Relaciones.getRelaciones();
+	const relacionesBelongsTo = [];
+	const foreignKeys = [];
+	for (const modelo of Object.values(db.sequelize.models)) {
+		let asociaciones = modelo.associations;
+		for (const asociacion of Object.values(asociaciones)) {
+			if(asociacion.target.name == db.sequelize.models.polizas_commoditys.name){
+				if(asociacion.associationType == 'BelongsTo'){
+					if(!relacionesBelongsTo.includes(modelo.name)){
+						relacionesBelongsTo.push(modelo.name);
+						foreignKeys.push(asociacion.foreignKey);
+					}
+				}
+			}
+		}
+	}
+	const RelacionesBelongsTo = new RelacionesHistorico(relacionesBelongsTo,db.sequelize.models,registro,foreignKeys);
+	return await RelacionesBelongsTo.getRelacionesBelongTo();
+}
+
+module.exports = {
+	index,
+	store,
+	show,
+	update,
+	destroy,
+	restaurar,
+	indexHistoricos,
+	showHistoricos,
+	storeList
+}

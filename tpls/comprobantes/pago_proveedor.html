@@ -1,0 +1,144 @@
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href='http://fonts.googleapis.com/css?family=Helvetica' rel='stylesheet' type='text/css'>
+    <style type="text/css">
+        td {
+            font-family: Helvetica;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <tpl for=".">
+        {{$isCancelada}}
+        <div class="vista-impresion-req" style="font-size:16px">
+            <table style="border: medium none ; text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;"
+                border="0" cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td colspan="2" rowspan="1" style="vertical-align: top;">
+                            <img src="{{$logoMarca}}"
+                                style="float:left;" alt="{{$nombreMarca}}" align="left" height="80" />
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$nombreMarca}}</div>
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$geDirEmpresa}}</div>
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$getCPEmpresa}}</div>
+                            <h1 style="text-align: center;">{{$nombreDocumento}}<br></h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="vertical-align: top;"><br></td>
+                        <td style="vertical-align: top;"><br></td>
+                    </tr>
+                    <tr>
+                        <td colspan="1" rowspan="1" style="vertical-align: middle; width: 50%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">Marca: <i>{{$nombreMarca}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Folio: <i>{{$folio}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Fecha:
+                                <i>{{$fecha}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Referencia: <i>{{$referencia}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Banco: <i>{{$nombreBanco}}</i></div>
+                        </td>
+
+                    </tr>
+                </tbody>
+            </table>
+            <br><br><br>
+            <span style="font-family: Helvetica,Arial,sans-serif;">Datos del proveedor:</span><br
+                style="font-family: Helvetica,Arial,sans-serif;">
+            <table style="text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" border="2"
+                cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td style="border: medium none ; vertical-align: top; width: 60%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">Nombre: <i>{{$nombreProveedor}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Dirección: <i>{{$direccionProveedor}}</i></div>
+                        </td>
+                        <td style="border: medium none ; vertical-align: top; width: 40%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">RFC: <i>{{$rfcProveedor}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Teléfono: <i>{{$telefonoProveedor}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Email: <i>{{$emailProveedor}}</i></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br><br><br>
+            <span style="font-family: Helvetica,Arial,sans-serif;font-weight: bold;">Detalles:</span><br
+                style="font-family: Helvetica,Arial,sans-serif;">
+            <table style="text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" border="0"
+                cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>					
+                        <td
+                            style="text-align: center; width: 60px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Folio<br></td>
+                        <td
+                            style="text-align: center; width: 70px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Descripción<br></td>
+                        <td
+                            style="text-align: center; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Fecha<br></td>
+                        <td
+                            style="text-align: center; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Referencia<br></td>
+                        <td
+                            style="text-align: center; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Descuento<br></td>
+                        <td
+                            style="vertical-align: middle; text-align: center; width: 70px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Monto<br></td>
+                    </tr>
+                    <tpl for="detalles">
+                        {{$detallesFactura}}
+                    </tpl>
+                </tbody>
+            </table>
+            <br><br><br>
+            <table style="text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" border="0"
+                cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td style="vertical-align: top; width: 70%;"><span style="font-weight: bold;">Cantidad en
+                                letra:</span>&nbsp;&nbsp;<span>{{$cantidadLetra}}</span>
+                            <br>
+                            <span>
+                                <strong>Tipo de cambio:</strong>
+                            </span>&nbsp;&nbsp;
+                            <span>
+                                {{$tipoCambio}}
+                            </span>
+                            <br>
+                        </td>
+                        <td style="vertical-align: top;">
+                            <div style="border-bottom: 1px solid black; margin: 8px 0pt; font-weight: bold;">
+                                <span style="font-weight: bold;">Importe:</span>
+                                <div style="float:right; width:50%;">{{$total}}</div>
+                                <div style="visibility: hidden; display: block; height: 5px; clear: both;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br />
+
+            <br />
+            <!-- COMENTARIOS -->
+			<table width="100%">
+				<tbody>
+					<tr>
+						<td>
+							<b>Comentarios:</b>
+							<br>
+							{{$comentarios}}
+						</td>
+					</tr>
+
+				</tbody>
+			</table>
+        </div>
+    </tpl>
+</body>
+
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estado de Cuenta</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            color: #333333;
+            font-size: 16px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #066ab2;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            font-weight: bold;
+            color: #066ab2;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #777777;
+            text-align: center;
+        }
+
+        a {
+            color: #066ab2;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #066ab2;
+            color: #ffffff;
+            text-align: center;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #045a8d;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table, th, td {
+            border: 1px solid #dddddd;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .instructions {
+            background-color: #eaf4fc;
+            border-left: 4px solid #066ab2;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .additional-logos {
+            text-align: center;
+            margin-top: 30px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .additional-logos img {
+            max-width: 150px;
+            height: auto;
+        }
+
+        .reference-image {
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        .reference-image img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Estado de Cuenta - {{$nombreCliente}}</h1>
+        
+        <p>ESTIMADO CLIENTE <span class="highlight">{{$nombreCliente}}</span>,</p>
+        
+        <p>Reciba un cordial saludo por parte de <span class="highlight">KeePro</span>. En el presente correo, le estamos compartiendo el estado de cuenta, mismo que le muestra sus cuentas por pagar actuales.</p>
+        
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Oficina</th>
+                        <th>Cliente</th>
+                        <th>Marca</th>
+                        <th>Razón Social</th>
+                        <th>Monto Original</th>
+                        <th>Moneda Factura</th>
+                        <th>Saldo Factura</th>
+                        <th>Saldo Vencido</th>
+                        <th>Días Crédito</th>
+                        <th>Fecha de Emisión</th>
+                        <th>Fecha de Vencimiento</th>
+                        <th>Días de Vencimiento</th>
+                        <th>Referencia Interna</th>
+                        <th>Referencia del Cliente</th>
+                        <th>Método de Pago</th>
+                        <th>Forma de Pago</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{$cxcs}}
+                </tbody>
+            </table>
+        </div>
+		
+		<p>Si su pago ya fue realizado, solicitamos amablemente el envío de su comprobante a la dirección: <a href="mailto:comprobantespagos@keepro.mx">comprobantespagos@keepro.mx</a>. Le recordamos realizar la referencia al ejecutar sus pagos de la siguiente manera; esto facilitará la correcta y oportuna aplicación en sus cuentas por pagar. Al realizar su pago, ya sea en ventanilla o por medio de portal bancario, favor de ingresar como referencia el número de su factura a liquidar.</p>
+        
+       
+    
+
+        <div class="instructions">
+            <p>1. En la parte superior derecha aparece el número de folio, mismo que es el que debe registrar en la referencia al momento de realizar el pago.</p>
+            <p>2. El recuadro marcado como CARTA DE BANCOS le muestra los números de cuenta e institución financiera en los cuales puede realizar los pagos de sus facturas.</p>
+            <p>3. Una vez realizado su pago, agradecemos compartir el comprobante en la siguiente dirección de correo: <a href="mailto:comprobantespagos@keepro.mx">comprobantespagos@keepro.mx</a></p>
+            <p>4. Si su pago corresponde a varias facturas, puede realizar un solo pago por el total de los documentos, referenciando las facturas a las que aplica, como "Facturas 8425 a 8437", o mencionando el folio de cada factura si no son consecutivos.</p>
+            <p>5. Favor de agregar la razón social a la cual le generaremos su facturación para la correcta identificación de sus depósitos.</p>
+        </div>
+
+        <p>Agradeciendo su preferencia, nos reiteramos a sus órdenes deseando tenga un excelente día.</p>
+        
+        <div class="footer">
+            <p>Si tienes alguna duda o necesitas asistencia adicional, no dudes en contactar a nuestro equipo de Crédito y Cobranza o mediante el correo <a href="acalaracionescyc@keepro.mx">acalaracionescyc@keepro.mx</a>. Estamos aquí para ayudarte en todo lo que necesites.</p>
+            <p>¡Gracias por confiar en KeePro!</p>
+        </div>
+		
+
+      
+    </div>
+
+</body>
+</html>

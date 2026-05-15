@@ -1,0 +1,10 @@
+{
+  "username": "keepro",
+  "password": "LBGev1022!",
+  "database": "keepro",
+  "host": "172.30.58.57",
+  "dialect": "mysql",
+  "define": {
+    "paranoid": true
+  }
+}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{$lavelTitle}} de Oficina</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+            color: #333333;
+            font-size: 16px;
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #066ab2;
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        p {
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .highlight {
+            font-weight: bold;
+            color: #066ab2;
+        }
+        
+        .rolAgente {
+            font-weight: bold;
+            color: #ff8000;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #777777;
+            text-align: center;
+        }
+
+        a {
+            color: #066ab2;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .button-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #066ab2;
+            color: #ffffff;
+            text-align: center;
+            border-radius: 5px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #054a8c;
+        }
+
+        .additional-logos {
+            text-align: center;
+            margin-top: 30px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .additional-logos img {
+            max-width: 150px;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>{{$lavelTitle}} de Oficina </h1>
+        
+        <p>Buen día: <span class="highlight">{{$nombreAgente}}</span></p>
+        
+        <p>Por medio de este correo se le informa que la oficina <span class="highlight">{{$nombreOficina}}</span> con clave <span class="highlight">{{$claveOficina}}</span> te ha sido {{$asignadoRe}} como <span class="rolAgente">{{$rolAgente}}</span> el día <span class="highlight">{{$fechaAsignacion}}</span> por <span class="highlight">{{$nombreUsuarioRegistro}}</span>.</p>
+        
+        <p>Requerimos que te comuniques y te presentes con él a la brevedad para evitar que te sea retirado de la cartera.</p>
+        
+      <div class="footer">
+            <p>¡Saludos cordiales!</p>
+            <p>Enviado con sistema KeePro</p>
+        </div>
+        
+    </div>
+
+</body>
+</html>

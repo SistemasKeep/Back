@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+    <title>Rechazo de salidación de nuevo cliente</title>
+    <body>
+        <p> Buen día, </p>
+
+        Por medio del presente hago mención que el alta solicitada del cliente
+        "{{$nombreCliente}}" ha sido rechazada debido a información faltante o incompleta, favor de revisar nuevamente.
+        <br> <br>
+
+        Razón social: <strong>{{$razonSocial}}</strong>
+        <br> <br>
+
+        Comentarios:
+        <br>
+        {{$comentarios}}
+        <br> <br>
+
+        Rechazado a:
+        <br>
+        {{$usuarioSolicita}}
+        <br> <br>
+
+        Quedo al pendiente,
+        <br> <br>
+        
+        <strong>¡SALUDOS CORDIALES!</strong>
+    </body>
+</html>

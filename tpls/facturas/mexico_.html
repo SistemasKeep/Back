@@ -1,0 +1,517 @@
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<link href='http://fonts.googleapis.com/css?family=Helvetica' rel='stylesheet' type='text/css'>
+	<style type="text/css">
+		td {
+			font-family: Helvetica;
+			font-size: 13px;
+		}
+	</style>
+</head>
+
+<body>
+	<tpl for=".">
+		{{$isCancelada}}
+		<div  class="page vista-impresion-req" style="font-size:12px">
+			<!-- ESTILOS DE IMPRESION -->
+			<style type="text/css">
+				.page {
+					font-family: Helvetica, sans-serif;
+					font-size: 12px !important;
+					background-color: white !important;
+					display: block;
+					margin: 0 auto;
+					margin-bottom: 0.5cm;
+				}
+
+				.page[size="letter"] {
+					width: 21.6cm;
+					height: 27.9cm;
+				}
+
+				.page[size="letter"][layout="portrait"] {
+					width: 27.9cm;
+					height: 21.6cm;
+				}
+
+				.page[size="A4"] {
+					width: 21cm;
+					height: 29.7cm;
+				}
+
+				.page[size="A4"][layout="portrait"] {
+					width: 29.7cm;
+					height: 21cm;
+				}
+
+				.page table tr th {
+					vertical-align: middle;
+					background-color: silver;
+					padding: 5px;
+				}
+
+				.page table tr td {
+					vertical-align: top;
+					padding: 2px 5px;
+				}
+
+				.page ul {
+					padding: 0;
+				}
+
+				.page ul li {
+					font-size: 12px;
+					list-style-type: none;
+					padding: 2px 0;
+				}
+
+				.page .centered {
+					text-align: center;
+				}
+
+				.page .fact-titulo {
+					font-size: 18px;
+					text-align: left;
+					margin: 0 0 5px 0;
+				}
+
+				.page .small-text {
+					font-size: 10px;
+				}
+
+				.page .italic {
+					font-style: italic;
+				}
+
+				.page .bold {
+					font-weight: bold;
+				}
+
+				.page .text-left {
+					text-align: left;
+				}
+
+				.page .cont-seriefactura {
+					font-size: 14px;
+					background-color: #eee;
+					padding: 5px;
+					border-radius: 2px;
+				}
+
+				.page .cont-seriefactura h4 {
+					margin: 0 0 10px 0;
+					text-align: center;
+				}
+
+				.page .cont-seriefactura p {
+					margin: 4px 0;
+				}
+
+				.page .cont-seriefactura strong {
+					text-transform: uppercase;
+				}
+
+				.page .emisor-cont {
+					background-color: #eee;
+					border-radius: 4px;
+					padding: 4px 15px;
+				}
+
+				.page .emisor-cont h3 {
+					font-size: 16px;
+					margin: 0 0 5px 0;
+				}
+
+				.page .emisor-cont ul {
+					margin: 0;
+				}
+
+				.page .receptor-cont {
+					padding: 10px 0 0 0;
+					font-size: 12px;
+				}
+
+				.page .receptor-cont span {
+					line-height: 16px;
+				}
+
+				.page .table-detalles {
+					font-size: 12px;
+					border: 1px solid silver;
+					border-radius: 2px;
+				}
+
+				.page .totales-container {
+					font-size: 13px;
+					text-align: right;
+					background-color: #eee;
+					border-radius: 4px;
+					padding: 6px 12px;
+				}
+
+				.page .totales-container ul {
+					margin: 0;
+				}
+
+				.page .totales-container ul li {
+					font-size: 12px;
+					text-align: left !important;
+				}
+
+				.page .qr-container {
+					text-align: center;
+					vertical-align: middle;
+				}
+
+				.page .datos-cfdi {
+					text-align: right;
+					font-size: 12px;
+				}
+
+				.page .datos-cfdi h4 {
+					font-size: 16px;
+					margin: 5px 0;
+				}
+
+				.page .datos-cfdi ul {
+					margin: 10px 0 0 0;
+					text-align: right;
+				}
+
+				.page .datos-cfdi ul li {
+					font-size: 12px;
+					line-height: 15px;
+				}
+
+				.page .sello-dig-cfdi th,
+				.page .sello-sat th,
+				.page .cadena-sat th {
+					font-size: 12px;
+					padding: 2px;
+				}
+
+				.page .sello-dig-cfdi td,
+				.page .sello-sat td,
+				.page .cadena-sat td {
+					font-size: 10px;
+					padding: 2px;
+					word-break: break-all !important;
+				}
+
+				@media print {
+					.page {
+						margin: 0;
+						box-shadow: 0;
+					}
+				}
+			</style>
+
+			<!-- ENCABEZADO DE DOCUMENTO -->
+			<table width="100%" border="0">
+				<tbody>
+					<tr>
+						<td width="70%">
+							<img src="{{$logoMarca}}" class="logotipo" src="" alt="{{$nombreMarca}}" align="left"
+								height="85" />
+						</td>
+						<td>
+							<div class="cont-seriefactura">
+								<p><strong>Folio: </strong>{{$folio}}</p>
+								<p><strong>Fecha de emisión: </strong>{{$fechaComprobante}}</p>
+							</div>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="3">
+							<h2 class="fact-titulo">{{$factura}}<br></h2>
+						</td>
+					</tr>
+					<!-- INFORMACIÓN DE EMISOR -->
+					<tr class="emisor-cont">
+						<td colspan="2">
+							<h3 class="centered">{{$nombreMarca}}</h3>
+
+							<table width="100%">
+								<tr>
+									<td>
+										<ul>
+											<li><strong>Razón social: </strong>{{$getRazonSocial}}</li>
+											<li><strong>Beneficiario:
+												</strong>{{$getNameBeneficiario}}</li><br />
+											<li><strong>RFC: </strong>{{$emisorRfc}}</li>
+											<li><strong>Dirección: </strong>{{$geDirEmpresa}}</li>
+											<li><strong>CP.: </strong>{{$getCPEmpresa}}</li>
+											<li><strong>Régimen Fiscal: </strong>{{$getRegimenFiscal}}</li>
+										</ul>
+									</td>
+									<td width="50%" style="font-size: 12px;">
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<!-- INFORMACIÓN DE EMISOR -->
+
+					<!-- BANCOS DE EMISOR -->
+					<tr class="emisor-cont">
+						<td colspan="2">
+							<h3 class="centered">CARTA DE BANCOS</h3>
+
+							<table width="100%">
+								<tr>
+									<td width="100%" style="font-size: 12px;">
+										{{$getBancos}}
+									</td>
+									<td width="0%" style="font-size: 12px;">
+									</td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+					<!-- BANCOS DE EMISOR -->
+					<tr>
+						<td colspan="2">
+							<span style="text-align: justify;text-justify: inter-word;">Agradeceremos que sus
+								comprobantes de pagos se envíen al correo institucional {{$getCorreo}} . Así mismo,
+								estaremos agradecidos con su apoyo, en referenciar sus pagos, al momento de su
+								transferencia, con el número de la(s) factura(s) que desean saldar.</span>
+						</td>
+					</tr>
+
+					<!-- INFORMACIÓN DE RECEPTOR -->
+					<tr>
+						<td colspan="2" class="receptor-cont">
+							<span><strong>Cliente: </strong>{{$receptorNombre}}</span><br />
+							<span><strong>RFC: </strong>{{$receptorRfc}}</span><br />
+							<br />
+							<span><strong>Domicilio Fiscal:</strong></span><br />
+							{{$getDomFiscal}}
+						</td>
+					</tr>
+					<!-- INFORMACIÓN DE RECEPTOR -->
+				</tbody>
+			</table>
+			<!-- ENCABEZADO DE DOCUMENTO -->
+
+			<!-- DETALLES DE LA FACTURA -->
+			<br />
+			<p class="small-text italic" style="margin:0">Detalles:</p>
+			<table class="table-detalles" width="100%">
+				<thead>
+					<tr>
+						<th width="10%" style="text-align: right;">Cantidad</th>
+						<th width="10%" style="text-align: left;">Unidad</th>
+						<th width="40%" style="text-align: left;">Descripción</th>
+						<th width="10%" style="text-align: right;">Precio Unitario</th>
+						{{$showThDescuento}}
+						<th width="10%" style="text-align: right;">IVA</th>
+						<th width="10%" style="text-align: right;">Importe</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tpl for="detalles">
+						{{$detallesFactura}}
+						<!-- <tr style="display: {{$pendiente}}">
+							<td class="small-text" style="vertical-align: middle; padding: 8px 10px;" colspan="6">
+								<p><i>Controles Auxiliares:</i><br>Información de controles auxiliares</p>
+							</td>
+						</tr>-->
+					</tpl>
+				</tbody>
+			</table>
+			<!-- DETALLES DE LA FACTURA -->
+
+			<!-- PIE DE LA FACTURA -->
+			<br />
+			<table width="100%" border="0">
+				<tbody>
+					<!-- TOTALES Y METODO DE PAGO -->
+					<tr>
+						<td width="60%">
+							<ul>
+								<li><strong>Importe con Letra: </strong>{{$cantidadLetra}}</li>
+								<li><strong>Método de Pago: </strong>{{$metodoPago}}</li>
+								<li><strong>Tipo de cambio: </strong>{{$tipoCambio}}</li>
+								<!-- <li><strong>Cuenta de Pago: </strong>{{$numCtaPago}}</li> -->
+							</ul>
+						</td>
+						<td class="totales-container">
+							<ul>
+								<li>
+									<strong>Subtotal:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$subTotal}}</strong>
+									</div>
+								</li>
+								<li style="display:{{$showDescuento}};">
+									<strong>Descuento:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getMontoDescuento}}</strong>
+									</div>
+								</li>
+								<li>
+									<strong>IVA:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getMontosIVA}}</strong>
+									</div>
+								</li>
+								<!--<li>
+								<strong>Impuestos Adicionales:</strong>
+								&nbsp;&nbsp;
+								<div style="float:right;">
+									<strong>{{$getMontosImpuestosAdi}}</strong>
+								</div>  
+							</li>
+								<li style="display:{{$showRetenciones}};">
+									<strong>Retenciones:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getMontosRetenciones}}</strong>
+									</div>
+								</li>
+								<li style="display:{{$showRetencionesIva}};">
+									<strong>Retenciones {{$getProductoNomPais}}:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getMontosRetencionesIva}}</strong>
+									</div>
+								</li>
+								<li style="display: {{$getProductoEmpresa}};">
+									<strong>ISH</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getISH}}</strong>
+									</div>
+								</li>
+								<li style="display: {{$getProductoEmpresa}};">
+									<strong>SANEAMIENTO:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getSaneamiento}}</strong>
+									</div>
+								</li>-->
+								<li>
+									<strong>Importe:</strong>
+									&nbsp;&nbsp;
+									<div style="float:right;">
+										<strong>{{$getTotal}}</strong>
+									</div>
+								</li>
+							</ul>
+						</td>
+					</tr>
+					<!-- TOTALES Y METODO DE PAGO -->
+				</tbody>
+			</table>
+			<br />
+
+			<!-- {{$getCFdiRelacionados}} -->
+
+			<br />
+			<table width="100%">
+				<tbody>
+					<!-- CFDI -->
+					<tr>
+						<td class="qr-container" width="30%">
+							{{$getQr}}
+							<!--<img height="120" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/QR_Code_Example.svg/368px-QR_Code_Example.svg.png" />-->
+						</td>
+						<td width="70%">
+							<div class="datos-cfdi">
+								<h4>Este documento es una representación impresa de un CFDI</h4>
+								<span class="small-text italic">*Efectos fiscales al pago</span><br />
+								<span><strong>Forma de Pago:</strong> {{$formaPago}}</span><br />
+								<span><strong>Uso del CFDI:</strong> {{$usoCfdi}}</span>
+								<br />
+								<ul>
+									<li><strong>Serie del Certificado del emisor: </strong>{{$noCertificado}}</li>
+									<li><strong>Folio Fiscal: </strong>{{$uuid}}</li>
+									<li><strong>No de Serie del Certificado del SAT: </strong>{{$noCertificadoSat}}</li>
+									<li><strong>Fecha y hora de certificación: </strong>{{$fechaTimbrado}}</li>
+									<li><strong>Lugar de Expedición: </strong>{{$lugarExpedicion}}, Guadalajara, Jal.
+									</li>
+									<li><strong>Version: </strong>{{$versionCfdi}}</li>
+								</ul>
+							</div>
+						</td>
+					</tr>
+					<!-- CFDI -->
+
+					<!-- SELLO DIGITAL CFDI -->
+					<tr>
+						<td colspan="2">
+							<table class="sello-dig-cfdi" width="100%">
+								<tbody>
+									<tr>
+										<th>Sello Digital del CFDI</th>
+									</tr>
+									<tr>
+										<td>
+											{{$selloCFD}}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</td>
+					</tr>
+					<!-- SELLO DIGITAL CFDI -->
+
+					<!-- SELLO DEL SAT -->
+					<tr>
+						<td colspan="2">
+							<table class="sello-sat" width="100%">
+								<tbody>
+									<tr>
+										<th>Sello del SAT</th>
+									</tr>
+									<tr>
+										<td>
+											{{$selloSat}}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</td>
+					</tr>
+					<!-- SELLO DEL SAT -->
+
+					<!-- CADENA ORIGINAL DEL SAT -->
+					<tr>
+						<td colspan="2">
+							<table class="cadena-sat" width="100%">
+								<tbody>
+									<tr>
+										<th>Cadena original del complemento de certificación digital del SAT</th>
+									</tr>
+									<tr>
+										<td>
+											{{$cadenaOriginal}}
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</td>
+					</tr>
+
+					<!-- COMENTARIOS -->
+					<tr>
+						<td>
+							<b>Comentarios:</b>
+							<br>
+							{{$comentariosFactura}}
+						</td>
+					</tr>
+
+				</tbody>
+			</table>
+			<!-- PIE DE LA FACTURA -->
+		</div>
+	</tpl>
+</body>
+
+</html>

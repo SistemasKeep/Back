@@ -1,0 +1,187 @@
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <link href='http://fonts.googleapis.com/css?family=Helvetica' rel='stylesheet' type='text/css'>
+    <style type="text/css">
+        td {
+            font-family: Helvetica;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <tpl for=".">
+        {{$isCancelada}}
+        <div class="vista-impresion-req" style="font-size:14px">
+            <table style="border: medium none ; text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;"
+                border="0" cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td colspan="2" rowspan="1" style="vertical-align: top;">
+                            <img src="{{$logoMarca}}"
+                                style="float:left;" alt="{{$nombreMarca}}" align="left" height="80" />
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$nombreMarca}}</div>
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$geDirEmpresa}}</div>
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$getCPEmpresa}}</div>
+                            <h1 style="text-align: center;">{{$nombreDocumento}}<br></h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="vertical-align: top;"><br></td>
+                        <td style="vertical-align: top;"><br></td>
+                    </tr>
+                    <tr>
+                        <td colspan="1" rowspan="1" style="vertical-align: middle; width: 50%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">Marca: <i>{{$nombreMarca}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">RFC:
+                                <i>{{$emisorRfc}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Régimen Fiscal:
+                                <i>{{$getRegimenFiscal}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Serie: <i>{{$serie}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Folio: <i>{{$folio}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Fecha:
+                                <i>{{$fechaComprobante}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Referencia: <i>{{$referencia}}</i></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <span style="font-family: Helvetica,Arial,sans-serif;">Datos del cliente:</span><br
+                style="font-family: Helvetica,Arial,sans-serif;">
+            <table style="text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" border="2"
+                cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td style="border: medium none ; vertical-align: top; width: 60%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">Nombre:
+                                <i>{{$receptorNombre}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Días de Crédito:
+                                <i>{{$diasCredito}}</i></div>
+                        </td>
+                        <td style="border: medium none ; vertical-align: top; width: 40%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">RFC:
+                                <i>{{$receptorRfc}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Código postal:
+                                <i>{{$codigoPostalReceptor}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Régimen Fiscal:
+                                <i>{{$regimenFiscalReceptor}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Teléfono: <i>{{$telefonoCliente}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Email: <i>{{$emailCliente}}</i></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br style="font-family: Helvetica,Arial,sans-serif;">
+
+            <table width="100%" style="table-layout: fixed; background: #cfd8dc40; padding: 5px; border-radius: 3px;">
+                <tbody>
+                    <tr>
+                        <td style="width: 50%; vertical-align: top;">
+                            <p style="font-size: 15px; margin-top: 5px;"><b>Información del Depósito</b></p>
+                            <span style="word-break: break-all;">
+                                <b>Fecha de pago:</b>&nbsp;{{$fechaPago}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Forma de pago:</b>&nbsp;{{$formaPago}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Moneda:</b>&nbsp;{{$monedaPago}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Tipo de cambio:</b>&nbsp;{{$tipoCambioPago}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Monto:</b>&nbsp;{{$montoPago}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Número de operación:</b>&nbsp;{{$noOperacion}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>N° serie CSD:</b>&nbsp;{{$noSertificadoSat}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Exportación:</b>&nbsp;{{$exportacion}}
+                            </span>
+
+                        </td>
+                        <td style="width: 50%; vertical-align: top;">
+                            <p style="font-size: 15px; margin-top: 5px;"><b>SPEI-Digital</b></p>
+                            <p tyle="font-size: 15px; margin-top: 5px;"><b>Folio Fiscal (UUID):
+                                {{$uuid}}<b></p>
+                            <span style="word-break: break-all;">
+                                <b>Cadena Original del comprobante de
+                                    pago:</b>&nbsp;{{$cadenaOriginalSat}}
+                            </span><br>
+                            <span style="word-break: break-all;">
+                                <b>Sello del pago:</b>&nbsp;{{$selloSat}}
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <br>
+            <table width="100%" style="table-layout: fixed; background: #cfd8dc40; padding: 5px; border-radius: 3px; margin-bottom: 30px;">
+                <tr>
+                    <th style="text-align: left; font-size: 15px; margin-bottom: 30px;"><strong>Monto reflejado en MXN</strong></th>
+                </tr>
+                <tr>
+                    <td style="width: 25%; vertical-align: top; text-align: center;">
+                        <div>Total Traslados Base IVA 16:</div>
+                        <div>{{$baseIva16}}</div>
+                    </td>
+                    <td style="width: 25%; vertical-align: top; text-align: center;">
+                        <div>Total Traslados Base IVA 0:</div>
+                        <div>{{$baseIva0}}</div>
+                    </td>
+                    <td style="width: 25%; vertical-align: top; text-align: center;">
+                        <div>Total Traslados Impuesto IVA 16:</div>
+                        <div>{{$impuestoIva16}}</div>
+                    </td>
+                    <td style="width: 25%; vertical-align: top; text-align: center;">
+                        <div>Total Traslados Impuesto IVA 0:</div>
+                        <div>{{$impuestoIva0}}</div>
+                    </td>
+                </tr>
+            </table>
+            <br>
+            <table width="100%" style="table-layout: fixed; background: #cfd8dc40; padding: 5px; border-radius: 3px; margin-bottom: 30px;">
+                <tr>
+                    <th style="text-align: left; font-size: 15px; margin-bottom: 30px;">CFDI Relacionados</th>
+                </tr>
+                {{$cfdisRelacionados}}
+            </table>
+            
+            <br>
+
+            <table style="width:100%;">
+                <tbody>
+                    <tr>
+                        <td style="vertical-align: top; width: 70%;"><span style="font-weight: bold;">Cantidad en
+                                letra:</span>&nbsp;&nbsp;<span>{{$importePagoLetra}}</span></td>
+                        <td style="vertical-align: top;">
+                            <div style="border-bottom: 1px solid black; margin: 8px 0pt; font-weight: bold;">
+                                <span style="font-weight: bold;">Importe del pago:</span>
+                                <div style="float:right; width:50%;">{{$importePago}}
+                                </div>
+                                <div style="visibility: hidden; display: block; height: 5px; clear: both;"></div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br style="font-family: Helvetica,Arial,sans-serif;">
+            <span style="font-weight: bold; font-family: Helvetica,Arial,sans-serif;">Comentarios:</span><br>
+            <br style="font-family: Helvetica,Arial,sans-serif;">
+            <span
+                style="font-style: italic; font-family: Helvetica,Arial,sans-serif;"><i>{{$comentarios}}</i></span><br
+                style="font-family: Helvetica,Arial,sans-serif;">
+            <br style="font-family: Helvetica,Arial,sans-serif;">
+        </div>
+    </tpl>
+</body>
+
+</html>

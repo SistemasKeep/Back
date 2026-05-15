@@ -1,0 +1,160 @@
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link href="http://fonts.googleapis.com/css?family=Helvetica" rel="stylesheet" type="text/css">
+    <style type="text/css">
+        .Pagina {
+            padding: 10px;
+            box-sizing: border-box;
+            height: 100%;
+            page-break-after: avoid;
+            page-break-inside: avoid;
+        }
+
+        .Footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 160px;
+            text-align: center;
+            line-height: 160px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="Pagina p1" style="position:relative">
+        {{$isCancelada}}
+        <div>
+            <table style="border: medium none ; text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" border="0" cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td colspan="2" rowspan="1" style="vertical-align: top;">
+                            <img src="{{$logoMarca}}" style="float:left; margin:0px 0px 0px 100px;" alt="{{$nombreMarca}}" align="center" height="85"/>
+                            <h2 style="text-align: right;">Folio: {{$folio}}<br></h2>
+                            <h2 style="text-align: right;">Fecha: {{$fecha}}<br></h2>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="vertical-align: top;"><br></td>
+                        <td style="vertical-align: top;"><br></td>
+                    </tr>
+                    <tr>
+                        <td colspan="1" rowspan="1" style="vertical-align: middle; width: 50%;">
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$nombreMarca}}</div>
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$geDirEmpresa}}</div>
+                            <div style="text-align: center; margin: 0px; padding: 0px;">{{$getCPEmpresa}}</div>
+                            <h1 style="text-align: center;">PROPUESTA COMERCIAL<br></h1>
+                        </td>
+                        <td colspan="1" rowspan="1" align: left; style="vertical-align: text-top; width: 50%;"><br><br><br><br>
+                            <div style="margin: 5px 0pt; text-align:right; font-weight: bold;">Moneda: <i>{{$descripcionMoneda}}</i></div>
+                            <div style="margin: 5px 0pt; text-align:right; font-weight: bold;">Agente Comercial: <i>{{$agenteComercial}}</i></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="margin: 30px 0pt; font-weight: bold; background-color: #092f87; padding: 1px;">
+                <h2>
+                    <font color="white">Estimado(a):  {{$nombreContacto}}</font>
+                </h2>
+            </div>
+            <span style="font-family: Helvetica,Arial,sans-serif;">Datos del cliente:</span>
+            <table style="width: 100%; border-collapse: collapse; display:block;" border="0">
+                <tbody>
+                    <tr>
+                        <td style="border: medium none ; vertical-align: top; width: 60%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">Nombre: <i>{{$nombreCliente}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Clave: <i>{{$claveCliente}}</i></div>
+                        </td>
+                        <td style="border: medium none ; vertical-align: top; width: 40%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;">Teléfono: <i>{{$telefonoContacto}}</i></div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">Email: <i>{{$emailContacto}}</i></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br><br>
+            <table style="width: 100%; border-collapse: collapse; display:block;" border="0">
+                <tbody>
+                    <tr>
+                        <td
+                            style="text-align: center; width: 60px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Cantidad<br></td>
+                        <td
+                            style="text-align: center; width: 70px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Unidad<br></td>
+                        <td
+                            style="text-align: center; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Descripción<br></td>
+                        <td
+                            style="vertical-align: middle; text-align: center; width: 70px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Precio Unitario<br></td>
+                        <td
+                            style="vertical-align: middle; text-align: center; width: 70px; background-color: rgb(164, 164, 164); color: black; font-weight: bold;">
+                            Tarifa Venta<br></td>
+                    </tr>
+                    {{$detalles}}
+                </tbody>
+            </table>
+
+            <br><br>
+            <br><br>
+            <table style="text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" border="0" cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td style="vertical-align: top; width: 70%;">
+                            <span style="font-weight: bold;">*Aplicable a mercancía en general (Sujeto a términos y condiciones)</span>&nbsp;&nbsp;
+                            <span style="font-weight: bold;"><br>*La tarifa contenida en esta cotización es aplicable al valor asegurado de la mercancía.</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <br>
+            <span style="font-weight: bold; font-family: Helvetica,Arial,sans-serif;">Forma de Pago: {{$metodoPago}}
+            <span style="font-weight: bold; font-family: Helvetica,Arial,sans-serif;">La tarifa no incluye impuestos</span><br>
+            <span style="font-weight: bold; font-family: Helvetica,Arial,sans-serif;">Comentarios:</span>
+            <br><br>
+            <span style="font-style: italic; font-family: Helvetica,Arial,sans-serif;"><i>{{$comentarios}}</i></span>
+            <br><br>
+            <table style="text-align: left; width: 100%; font-family: Helvetica,Arial,sans-serif;" cellpadding="2" cellspacing="2">
+                <tbody>
+                    <tr>
+                        <td style="border: medium none ; vertical-align: top; width: 60%;">
+                            <div style="margin: 5px 0pt; font-weight: bold;"><h4 style="color: #092f87"><b>DETALLES DEL PAGO </b></h4></div>
+                            <div style="margin: 5px 0pt;"><b>Beneficiario: </b>LINK BG MEXICO S. DE. R.L. DE C.V.</div>
+                            <div style="margin: 5px 0pt;"><b>Institución bancaria: </b>BANCO BASE
+                            <div style="margin: 5px 0pt;"><b>Cuenta en pesos (MXN): </b> 1451 8028 6690 0010 18
+                            <div style="margin: 5px 0pt;"><b>Cuenta en dólares (USD): </b> 1451 8028 6690 0020 17 / <b> Codigo SWIFT: </b>BBSEMXMX</div>
+                            <div style="margin: 5px 0pt;"><b>Referencia de pago </b>{{$claveCliente}} </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="margin: 30px 0pt; font-weight: bold; background-color: #092f87; padding: 15px;"></div>
+                
+        </div>
+        <div class="Footer">
+            <table style="width: 100%; border-collapse: collapse;" border="0">
+                <tbody>
+                    <tr>
+                        <td style="border: medium none ; vertical-align: top; width: 60%;">
+                            <div style="margin: 5px 30px; font-weight: bold;">
+                                <h4 style="color: #092f87"><b>AUTORIZACIÓN</b></h4>
+                            </div>
+                            <div style="margin: 5px 0pt; font-weight: bold;">
+                                <p>He leído la presente cotización, así como los términos y condiciones anexos y estoy de acuerdo con el precio y condiciones estipuladas del presente servicio que estoy contratando:</p>
+                            </div><br>
+                            <div style="margin: 5px 0pt; font-weight: bold;">
+                                Nombre:__________________Puesto:__________________Empresa:__________________Fecha:__________________Firma:__________________
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+
+</html>

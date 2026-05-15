@@ -1,0 +1,498 @@
+<html>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <link href='https://fonts.googleapis.com/css?family=Roboto:400,700' rel='stylesheet' type='text/css'>
+</head>
+
+<body>
+  {{$isCancelada}}
+  <div class="page " style="font-size:13px">
+    <!-- ESTILOS DE IMPRESION -->
+    <style type="text/css">
+      body {
+        font-family: 'Roboto', sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: linear-gradient(135deg, #f8f9fa, #e0e0e0) !important;
+      }
+
+      .page {
+        font-family: Helvetica, sans-serif;
+        font-size: 12px !important;
+        display: block;
+        margin: 0 auto;
+        margin-bottom: 0.5cm;
+      }
+
+      .page[size="letter"] {
+        width: 21.6cm;
+        height: 27.9cm;
+      }
+
+      .page[size="letter"][layout="portrait"] {
+        width: 27.9cm;
+        height: 21.6cm;
+      }
+
+      .page[size="A4"] {
+        width: 21cm;
+        height: 29.7cm;
+      }
+
+      .page[size="A4"][layout="portrait"] {
+        width: 29.7cm;
+        height: 21cm;
+      }
+
+
+      .page table tr th {
+        vertical-align: middle;
+        background-color: #d3d3d3;
+        padding: 8px;
+        border-bottom: 2px solid #ccc;
+        color: #16a085;
+      }
+
+      .page table tr td {
+        vertical-align: top;
+        padding: 6px 10px;
+        border-bottom: 1px solid #f0f0f0;
+      }
+
+      .page ul {
+        padding-left: 20px;
+      }
+
+      .page ul li {
+        font-size: 13px;
+        list-style-type: square;
+        padding: 5px 0;
+      }
+
+      .page .centered {
+        text-align: center;
+        font-weight: bold;
+        color: #16a085;
+      }
+
+
+      .page .fact-titulo {
+        font-size: 18px;
+        text-align: left;
+        margin: 0 0 8px 0;
+        color: #16a085;
+      }
+
+      .page .small-text {
+        font-size: 10px;
+        color: #777;
+      }
+
+      .page .italic {
+        font-style: italic;
+        font-size: 11px;
+      }
+
+      .page .bold {
+        font-weight: bold;
+        color: #000;
+      }
+
+      .page .text-left {
+        text-align: left;
+      }
+
+      .preStyle {
+        color: #777;
+        text-align: justify;
+        padding: 2px;
+        word-break: break-all;
+        font-size: 9px;
+        text-align: left;
+        font-family: 'Arial', sans-serif;
+      }
+
+      .page .cont-seriefactura {
+        font-size: 14px;
+        background-color: #f4f4f4;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        color: #16a085;
+      }
+
+      .page .cont-seriefactura h4 {
+        margin: 0;
+        padding-bottom: 5px;
+        text-align: center;
+        font-size: 16px;
+        color: #16a085;
+      }
+
+
+      .page .cont-seriefactura p {
+        margin: 6px 0;
+        color: #444;
+      }
+
+      .page .cont-seriefactura strong {
+        text-transform: uppercase;
+        color: #2c3e50;
+      }
+
+      .page .emisor-cont {
+        background-color: #f1f1f1;
+        border-radius: 5px;
+        padding: 5px 20px;
+        color: #16a085;
+      }
+
+      .page .emisor-cont h3 {
+        font-size: 16px;
+        margin: 0 0 10px 0;
+        color: #34495e;
+      }
+
+      .page .receptor-cont {
+        padding: 12px 0 0 0;
+        font-size: 12px;
+        color: #555;
+      }
+
+      .page .table-detalles {
+        font-size: 12px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+      }
+
+      .page .table-detalles th {
+        background-color: #16a085;
+        color: #fff;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .page .table-detalles td {
+        background-color: #ecf0f1;
+        color: #2c3e50;
+        padding: 8px;
+        text-align: center;
+      }
+
+      .page .table-detalles tr:nth-child(even) td {
+        background-color: #f5f5f5;
+      }
+
+
+      .page .totales-container {
+        font-size: 13px;
+        text-align: right;
+        background-color: #ecf0f1;
+        border-radius: 5px;
+        padding: 8px 15px;
+      }
+
+      .page .totales-container ul {
+        margin: 0;
+      }
+
+
+      .page .totales-container ul li {
+        font-size: 12px;
+        text-align: left !important;
+        color: #34495e;
+      }
+
+      .page .qr-container {
+        text-align: center;
+        vertical-align: middle;
+        margin-top: 10px;
+      }
+
+      .page .datos-cfdi {
+        text-align: right;
+        font-size: 12px;
+        color: #555;
+        text-align: left;
+      }
+
+      .page .datos-cfdi h4 {
+        font-size: 16px;
+        margin: 8px 0;
+        color: #16a085;
+        text-align: left;
+      }
+
+      .page .datos-cfdi ul {
+        margin: 12px 0 0 0;
+        text-align: right;
+        color: #16a085;
+        text-align: left;
+      }
+
+      .page .datos-cfdi ul li {
+        font-size: 12px;
+        line-height: 18px;
+        color: #16a085;
+        text-align: left;
+      }
+
+      .page .sello-dig-cfdi th,
+      .page .sello-sat th,
+      .page .cadena-sat th {
+        font-size: 13px;
+        padding: 5px;
+        background-color: #f0f0f0;
+        color: #16a085;
+        text-align: left;
+        border-bottom: 2px solid #16a085;
+      }
+
+
+      .datos-cfdi {
+        text-align: left;
+        /* Alineación a la izquierda */
+        font-size: 11px;
+        color: #333;
+      }
+
+
+      .encabezado-factura {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: center;
+        color: white;
+        background-color: #16a085;
+        padding: 10px 0;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        width: 100%;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .contenedor-datos {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: flex-start;
+        width: 100%;
+      }
+
+      table {
+        width: 100%;
+      }
+
+      td {
+        padding: 10px;
+        vertical-align: top;
+      }
+
+      .encabezado-factura {
+        font-size: 16px;
+        font-weight: bold;
+        text-align: left;
+        color: white;
+        background-color: #16a085;
+        padding: 10px 0;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        width: 100%;
+      }
+
+      .negrita-verde {
+        color: #16a085;
+      }
+
+      .middle-bar {
+        position: relative;
+        top: 0;
+        left: 0;
+        z-index: 997;
+        width: 100%;
+        height: 6px;
+        background: linear-gradient(to right,
+            #1abc9c 50%,
+            #16a085);
+      }
+    </style>
+
+    <!-- ENCABEZADO DE DOCUMENTO -->
+    <table width="100%" border="0">
+      <tbody>
+        <tr>
+          <td width="50%">
+            <img src="{{$logoMarca}}" class="logotipo" src="" alt="{{$nombreMarca}}" align="left" height="85" />
+          </td>
+          <td>
+            <div class="receptor-cont">
+              <h3 class="encabezado-factura" style="padding: 10px; text-align: center;">RECIBO ELECTRONICO DE PAGO</h3>
+              <strong class="negrita-verde">Folio y Serie: </strong>{{$folio}}<br>
+              <strong class="negrita-verde">Fecha y hora de certificación: </strong>{{$fechaComprobante}}<br>
+              <strong class="negrita-verde">Folio Fiscal: </strong>{{$uuid}}<br>
+              
+            </div>
+          </td>
+        </tr>
+      
+    </table>
+	
+	    </table>
+	
+	   <table width="100%" border="0">
+      <tbody>
+        <tr>
+		<td width="50%">
+           
+          </td>
+          
+          <td style="text-align: left;">
+            <div class="receptor-cont">
+              <h3 class="encabezado-factura" style="padding: 10px; text-align: center;">INFORMACIÓN DEL PAGO</h3>
+              <strong class="negrita-verde">Fecha de pago: </strong>{{$fechaPago}}<br>
+              <strong class="negrita-verde">Forma de pago: </strong>{{$formaPago}}<br>
+              <strong class="negrita-verde">Moneda del pago: </strong>{{$monedaPago}}<br>
+              <strong class="negrita-verde">Tipo de cambio: </strong>{{$tipoCambioPago}}<br>
+			  <strong class="negrita-verde">Monto original del pago: </strong>{{$montoPago}}<br>
+            </div>
+          </td>
+        </tr>
+      
+    </table>
+    <table>
+      <!-- INFORMACIÓN DE EMISOR -->
+      <tr>
+        <td width="50%" valign="top" class="receptor-cont" style="padding: 10px;">
+          <h3 class="encabezado-factura" style="padding: 10px; text-align: center;">DATOS DEL EMISOR</h3>
+          <ul>
+            <strong class="negrita-verde">RFC emisor: </strong>{{$emisorRfc}}<br>
+            <strong class="negrita-verde">Código Postal: </strong>{{$getCPEmpresa}}<br>
+            <strong class="negrita-verde">Régimen Fiscal: </strong>{{$getRegimenFiscal}}<br>
+          </ul>
+        </td>
+        <td width="50%" valign="top" class="receptor-cont" style="padding: 10px;">
+          <h3 class="encabezado-factura" style="padding: 10px; text-align: center;">DATOS DEL RECEPTOR</h3>
+          <span><strong class="negrita-verde">Razón social receptor: </strong>{{$receptorNombre}}</span><br />
+          <span><strong class="negrita-verde">RFC receptor: </strong>{{$receptorRfc}}</span><br />
+		  <span><strong class="negrita-verde">CP receptor: </strong>{{$codigoPostalReceptor}}</span><br />
+          
+        </td>
+      </tr>
+
+<table width="100%" >
+                <tr>
+				<td width="50%" valign="top" class="receptor-cont" style="padding: 10px;"></TD>
+				
+				
+                <td width="50%" valign="top" class="receptor-cont" style="padding: 10px;"></TD>
+          <h3 class="encabezado-factura" style="padding: 10px; text-align: center;">MONTO REFLEJADO EN MXN</h3></tr>
+                
+            </table>
+            <br>
+            <table width="100%" style="table-layout: fixed; background: #cfd8dc40; padding: 5px; border-radius: 3px; margin-bottom: 30px;">
+                <tr>
+                    <h3 class="encabezado-factura" style="padding: 10px; text-align: center;">FACTURAS RELACIONADAS</h3></tr>
+                </tr>
+                {{$cfdisRelacionados}}
+            </table>
+        
+
+            <table style="width:100%;">
+                <tbody>
+                   
+					<div> <strong class="negrita-verde">Base 16%:</div></strong>
+                        <div>{{$baseIva16}}</div>
+						<br>
+						<div> <strong class="negrita-verde">Impuesto 16%:</div></strong>
+                        <div>{{$impuestoIva16}}</div>
+						
+                 
+                    
+                   
+                        <div> <strong class="negrita-verde">TBase IVA 0%:</div></strong>
+                        <div>{{$baseIva0}}</div>
+						<br>
+						<div> <strong class="negrita-verde">Impuesto IVA 0%:</div></strong>
+                        <div>{{$impuestoIva0}}</div>
+						
+						<br>
+						<br>
+					
+                        <td style="vertical-align: top; width: 70%;"><span style="font-weight: bold;" class="negrita-verde">Total del pago:</span><span>{{$importePago}}</span></td>
+                         <td style="vertical-align: top; width: 70%;"><span style="font-weight: bold;" class="negrita-verde">Total en letra:</span><span>{{$importePagoLetra}}</span></td>
+                        
+                         
+                               
+								
+							
+                  
+                        
+						
+               
+               
+                          
+                        </td>
+						
+						
+                    
+                </tbody>
+            </table>
+    
+
+    
+
+
+    <table style="border: 0px; width: 100%;">
+      <tbody>
+        <tr class="receptor-cont">
+          <!-- Primera fila con dos divs en la mitad izquierda -->
+          <td style="width: 70%; text-align: right;">
+            <div class="datos-cfdi">
+                <h4>Este documento es una representación impresa de un CFDI</h4>   
+                
+                
+                
+                <strong class="negrita-verde">Serie del Certificado del emisor: </strong>{{$noCertificado}}<br>
+                
+                <strong class="negrita-verde">No de Serie del Certificado del SAT: </strong>{{$noCertificadoSat}}<br>
+                
+                
+            </div>
+          </td>
+          <!-- QR en la mitad derecha -->
+          <td rowspan="2" style="width: 30%; text-align: center; vertical-align: top;">
+            
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- {{$getCFdiRelacionados}} -->
+
+    <br>
+
+
+
+    <!-- SAT SEAL -->
+    <strong class="negrita-verde">Sello SAT </strong>
+    <div class="info-box" style="width: 96%; text-align: center;">
+      <div class="preStyle">
+        {{$selloSat}}
+      </div>
+    </div>
+    <br>
+    
+    <!-- ORIGINAL CHAIN -->
+    <strong class="negrita-verde">Cadena original </strong>
+    <div class="info-box" style="width: 96%; text-align: center;">
+      <div class="preStyle">
+        {{$cadenaOriginalSat}}
+      </div>
+    </div>
+    <!-- PIE DE LA FACTURA -->
+  </div>
+</body>
+
+</html>
