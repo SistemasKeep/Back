@@ -18,6 +18,7 @@ db.sequelize.authenticate().then(() => {
 			console.log('Servidor HTTPS ' + process.env.NOM_APP + ' corriendo correctamente en el puerto ' + process.env.PORT);
 		});
 	} catch (error) {
+		console.log(error)
 		app.listen(process.env.PORT, async () => {
 			console.log('Servidor ' + process.env.NOM_APP + ' corriendo correctamente en el puerto ' + process.env.PORT);
 		});
