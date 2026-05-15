@@ -18,9 +18,9 @@ jobs:
           mkdir -p ~/.ssh \
           && echo "${{ secrets.api_key }}" | tr -d '\r' > ~/.ssh/id_rsa \
           && chmod 600 ~/.ssh/id_rsa \
-          && ssh-keyscan -H ec2-3-144-20-199.us-east-2.compute.amazonaws.com >> ~/.ssh/known_hosts \
+          && ssh-keyscan -H 3.144.20.199 >> ~/.ssh/known_hosts \
           && ssh-keyscan -H github.com >> ~/.ssh/known_hosts  # Agregar clave de host de GitHub si es necesario
 
       - name: Deploy to Server
         run: |
-          ssh -o StrictHostKeyChecking=no ubuntu@ec2-3-144-20-199.us-east-2.compute.amazonaws.com './scripts/buildBack.sh'
+          ssh -o StrictHostKeyChecking=no ubuntu@3.144.20.199 './scripts/buildBack.sh'
