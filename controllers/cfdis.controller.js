@@ -658,8 +658,7 @@ async function timbrarManal(req,res){
         });
         registro.folio = `${marca.clave}-${(totalCount+1)}`
         const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_oficina:registro.id_oficina}})
-        const marcaId = 1
-        const marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: marcaId }})
+        const marcaAgenteOficina = await db.sequelize.models.marca_agentes_oficinas.findOne({where:{id_oficina_cliente:oficinaCliente.id, id_marca: parametros.idMarca }})
         if(marcaAgenteOficina == null){
             return res.status(400).send({ status: false, msg: "No existe oficina ligada al cliente con la marca seleccionada"});
         }
