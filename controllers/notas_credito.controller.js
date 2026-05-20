@@ -863,6 +863,16 @@ async function exportar(req, res) {
 			where: filtro
 		});
 
+		//Se obtiene el tipo de cambio del dia
+		let fechaStringTCDia = moment().tz('America/Mexico_City').format('YYYY-MM-DD')
+		let fechaBusquedaTCDia = moment(fechaStringTCDia).tz('America/Mexico_City')
+	
+		let doitTCDia = await buscarActualiarTipoCambioSRes(fechaBusquedaTCDia)
+		if(doitTCDia !== true){
+			return doitTCDia
+		}
+		const tipoCambioDia = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaStringTCDia}});
+
 		const data = [];
 		for(const doc of docs){
 			const element = doc.toJSON()
@@ -1004,8 +1014,8 @@ async function exportar(req, res) {
                 element.factura.total_factura = parseFloat(parseFloat(totalFactura).toFixed(2))
                 element.factura.saldo_saldado = parseFloat((totalFactura - (element.factura.cxc != null ? element.factura.cxc.saldo : 0)).toFixed(2))
 				element.fecha_emision = element.createdAt.toISOString().slice(0, 19).replace('T', ' ');
-                const tc = await db.sequelize.models.tipos_cambio_futuro.findByPk(element.factura.factura_detalles[0].pedido_factura?.certificado?.id_tipo_cambio_futuro);
-                element.tipo_cambio = tc != null ? tc.tipo_cambio : '';
+                //const tc = await db.sequelize.models.tipos_cambio_futuro.findByPk(element.factura.factura_detalles[0].pedido_factura?.certificado?.id_tipo_cambio_futuro);
+                element.tipo_cambio = tipoCambioDia != null ? tipoCambioDia.tipo_cambio : '';
                 const nombreCliente = await db.sequelize.models.clientes.findByPk(element.factura.factura_detalles[0].pedido_factura === element.factura.factura_detalles[0].pedido_factura || element.factura.factura_detalles[0].pedido_factura === null ? element.factura.cliente.id : element.factura.factura_detalles[0].pedido_factura.certificado.id_cliente);
                 element.cliente = nombreCliente != null ? nombreCliente.nombre : '';
 			}
@@ -1014,9 +1024,7 @@ async function exportar(req, res) {
 		
 		const dataExcel = [];
 		let aux;
-		console.log(data.length)
 		for (let i = 0; i < data.length; i++) {
-			console.log(i)
 			let elemento = data[i];
 			aux = {
 				'Folio': elemento.folio,
@@ -1034,7 +1042,6 @@ async function exportar(req, res) {
 			};
 			dataExcel.push(aux);
 		}
-		console.log(dataExcel.length)
 
 		const nombreReporte = 'Notas de credito';
 		const namesSheets = [db.sequelize.models.notas_credito.name];
