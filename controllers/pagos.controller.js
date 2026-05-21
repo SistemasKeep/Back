@@ -695,7 +695,7 @@ async function store(req, res) {
 		}
 		const razonSocialReceptor = await db.sequelize.models.razones_sociales.findByPk(registroPago.id_razon_social, { include:['regimen_fiscal','uso_cfdi','forma_pago','metodo_pago','nacionalidad_timbrado'],paranoid: false });
 		const alertasTimbrado = []
-		if(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx' && metodoPago.clave.toLowerCase() == "ppd" && fechaValidaTimbrar && marca.pais.clave.toLowerCase() == "mx"){
+		if(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx' && metodoPago.clave.toLowerCase() == "ppd" && /*fechaValidaTimbrar &&*/ marca.pais.clave.toLowerCase() == "mx"){
 			for(const cxc of cxcs){
 				const cXc = await db.sequelize.models.cuentas_por_cobrar.findByPk(cxc.idCuentaPorCobrar);
 				const factura = await db.sequelize.models.facturas.findByPk(cXc.id_factura, { include:['moneda','factura_detalles','cfdi'] });
@@ -766,9 +766,9 @@ async function store(req, res) {
 				alertasTimbrado.push(getCFdi.msg)
 			}
 		}else{
-			if(!fechaValidaTimbrar){
-				alertasTimbrado.push('Recuerda que el CFDI con complemento para la recepción de pagos debe emitirse a más tardar el quinto día natural del mes siguiente al que se recibió el pago.')
-			}
+			//if(!fechaValidaTimbrar){
+			//	alertasTimbrado.push('Recuerda que el CFDI con complemento para la recepción de pagos debe emitirse a más tardar el quinto día natural del mes siguiente al que se recibió el pago.')
+			//}
 			if(!(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx')){
 				alertasTimbrado.push('La nacionalidad de timbrado de la razón social ligada al pago debe ser mexicana para timbrarlo.')
 			}
@@ -842,7 +842,7 @@ async function reTimbrarPago(req, res){
 	const fechaValidaTimbrar = now <= fechaLimiteTimbrado
 
 	const razonSocialReceptor = await db.sequelize.models.razones_sociales.findByPk(pago.id_razon_social, { include:['regimen_fiscal','uso_cfdi','forma_pago','metodo_pago','nacionalidad_timbrado'],paranoid: false });
-	if(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx' && pago.metodo_pago.clave.toLowerCase() == "ppd" && fechaValidaTimbrar && pago.marca.pais.clave.toLowerCase() == "mx"){
+	if(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx' && pago.metodo_pago.clave.toLowerCase() == "ppd" && /*fechaValidaTimbrar &&*/ pago.marca.pais.clave.toLowerCase() == "mx"){
 		const { getDataDoc, timbrarPago } = require('./cfdis.controller')
 		const datoFacturacionEmisor = await db.sequelize.models.datos_facturacion.findByPk(pago.marca.id_dato_facturacion, { include:['regimen_fiscal'],paranoid: false });
 		const findRelaciones = new Relaciones(['estado.pais.continente'],['estado.pais.continente'],db.sequelize.models)
@@ -1225,9 +1225,9 @@ async function reTimbrarPago(req, res){
 		}
 	} else{
 		const alertasTimbrado = []
-		if(!fechaValidaTimbrar){
-			alertasTimbrado.push('Recuerda que el CFDI con complemento para la recepción de pagos debe emitirse a más tardar el quinto día natural del mes siguiente al que se recibió el pago.')
-		}
+		//if(!fechaValidaTimbrar){
+		//	alertasTimbrado.push('Recuerda que el CFDI con complemento para la recepción de pagos debe emitirse a más tardar el quinto día natural del mes siguiente al que se recibió el pago.')
+		//}
 		if(!(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx')){
 			alertasTimbrado.push('La nacionalidad de timbrado de la razón social ligada al pago debe ser mexicana para timbrarlo.')
 		}
