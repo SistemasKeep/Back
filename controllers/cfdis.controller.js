@@ -9,6 +9,7 @@ const { sendMailFactura } = require('./facturas_mails.controllers')
 const { buscarActualiarTipoCambioSRes } = require('./tipos_cambio_futuro.controller')
 const fs = require('fs');
 const path = require('path');
+const { ManipuladorCadenas } = require('../middlewares/manipuladorCadenas');
 
 async function timbrar(req, res){
 	const parametros = req.body;
@@ -558,9 +559,11 @@ async function genReferencia(claveMarcaAgenteOficina,idRazonSocial,oficina){
 			claveRazonSocial = (index +1)
 		}
 	});
-	var noOperacion = claveMarcaAgenteOficina + "-" + claveRazonSocial
+	const auxClave = claveMarcaAgenteOficina.split("-")
+	const claveOficina = auxClave[0] + "-" + auxClave[1] + "-" + (Number.isInteger(parseInt(auxClave[2])) ? ManipuladorCadenas.obtenerLetra(auxClave[2]) : auxClave[2])
+	var noOperacion = claveOficina + "-" + ManipuladorCadenas.obtenerLetra(claveRazonSocial)
 
-	var whereFind = {
+	const whereFind = {
 		where: {
 			referencia: {[db.Sequelize.Op.like]: `%${noOperacion}%`}
 		},paranoid: false
