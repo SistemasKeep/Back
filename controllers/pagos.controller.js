@@ -790,286 +790,253 @@ async function store(req, res) {
 }
 
 async function reTimbrarPago(req, res){
-	const { id } = req.params;
-	const parametros = req.body;
-	if(!Number.isInteger(parseInt(id))){
-		return res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
-	} 
-	if(!Number.isInteger(parseInt(req.body.idFormaPago))){
-		return res.status(400).send({status:false , msg: `El parametro idFormaPago debe ser int.` });
-	} 
-	const formaPago = await db.sequelize.models.formas_pago.findByPk(req.body.idFormaPago,{ paranoid: false });
-	if(formaPago == null){
-		return res.status(400).send({status:false , msg: `El registro idFormaPago: ${req.body.idFormaPago} no existe.` });
-	}
-	const parametrosRelaciones = [ 
-		'cfdi.uso_cfdi',
-		'cfdi.metodo_pago',
-		'cfdi.forma_pago',
-		'cfdi.motivo_cancelacion',
-		'cuenta_bancaria_interna.moneda',
-		'cuenta_bancaria_interna.dato_facturacion.pais.continente',
-		'cuenta_bancaria_interna.dato_facturacion.nacionalidad_timbrado.continente',
-		'cuenta_bancaria_interna.dato_facturacion.regimen_fiscal',
-		'marca.domicilio.estado.pais.continente',
-		'marca.pais.continente',
-		'marca.archivo',
-		'marca.dato_facturacion.regimen_fiscal', 
-		'marca.dato_facturacion.pais.continente', 
-		'marca.dato_facturacion.nacionalidad_timbrado.continente',
-		'moneda',
-		'metodo_pago',
-		'razon_social.pais.continente', 
-		'razon_social.uso_cfdi',
-		'razon_social.metodo_pago',
-		'razon_social.forma_pago',
-		'razon_social.razon_bloqueo',
-		'razon_social.regimen_fiscal',
-		'razon_social.moneda_credito' 
-	]
-	const findRelaciones = new Relaciones(parametrosRelaciones,parametrosRelaciones,db.sequelize.models)
-	const relaciones = await findRelaciones.getRelaciones()
+	try {
+		const { id } = req.params;
+		const parametros = req.body;
+		if(!Number.isInteger(parseInt(id))){
+			return res.status(400).send({status:false , msg: `El parametro id debe ser int.` });
+		} 
+		if(!Number.isInteger(parseInt(req.body.idFormaPago))){
+			return res.status(400).send({status:false , msg: `El parametro idFormaPago debe ser int.` });
+		} 
+		const formaPago = await db.sequelize.models.formas_pago.findByPk(req.body.idFormaPago,{ paranoid: false });
+		if(formaPago == null){
+			return res.status(400).send({status:false , msg: `El registro idFormaPago: ${req.body.idFormaPago} no existe.` });
+		}
+		const parametrosRelaciones = [ 
+			'cfdi.uso_cfdi',
+			'cfdi.metodo_pago',
+			'cfdi.forma_pago',
+			'cfdi.motivo_cancelacion',
+			'cuenta_bancaria_interna.moneda',
+			'cuenta_bancaria_interna.dato_facturacion.pais.continente',
+			'cuenta_bancaria_interna.dato_facturacion.nacionalidad_timbrado.continente',
+			'cuenta_bancaria_interna.dato_facturacion.regimen_fiscal',
+			'marca.domicilio.estado.pais.continente',
+			'marca.pais.continente',
+			'marca.archivo',
+			'marca.dato_facturacion.regimen_fiscal', 
+			'marca.dato_facturacion.pais.continente', 
+			'marca.dato_facturacion.nacionalidad_timbrado.continente',
+			'moneda',
+			'metodo_pago',
+			'razon_social.pais.continente', 
+			'razon_social.uso_cfdi',
+			'razon_social.metodo_pago',
+			'razon_social.forma_pago',
+			'razon_social.razon_bloqueo',
+			'razon_social.regimen_fiscal',
+			'razon_social.moneda_credito' 
+		]
+		const findRelaciones = new Relaciones(parametrosRelaciones,parametrosRelaciones,db.sequelize.models)
+		const relaciones = await findRelaciones.getRelaciones()
 
-	const pago = await db.sequelize.models.pagos.findByPk(id, {include:relaciones,paranoid: false});
-	if(pago.cfdi != null){
-        return res.status(400).send({ validado: false, msg: "El pago ya fue timbrado" });
-	}
-
-
-	const fechaPago = moment(pago.fecha_pago).tz('America/Mexico_City');
-	const fechaLimiteTimbrado = fechaPago.clone().add(1, 'month').date(5).set({ hour: 12, minute: 0, second: 0, millisecond: 0 }); 
-	const now = moment().tz('America/Mexico_City')
-	const fechaValidaTimbrar = now <= fechaLimiteTimbrado
-
-	const razonSocialReceptor = await db.sequelize.models.razones_sociales.findByPk(pago.id_razon_social, { include:['regimen_fiscal','uso_cfdi','forma_pago','metodo_pago','nacionalidad_timbrado'],paranoid: false });
-	if(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx' && pago.metodo_pago.clave.toLowerCase() == "ppd" && /*fechaValidaTimbrar &&*/ pago.marca.pais.clave.toLowerCase() == "mx"){
-		const { getDataDoc, timbrarPago } = require('./cfdis.controller')
-		const datoFacturacionEmisor = await db.sequelize.models.datos_facturacion.findByPk(pago.marca.id_dato_facturacion, { include:['regimen_fiscal'],paranoid: false });
-		const findRelaciones = new Relaciones(['estado.pais.continente'],['estado.pais.continente'],db.sequelize.models)
-    	const relaciones = await findRelaciones.getRelaciones()
-		const dataRazonSocial = await db.sequelize.models.razones_sociales_domicilios.findOne({ where:{id_razon_social:pago.id_razon_social, tipo: 'F'}, include:['domicilio'],paranoid: false });
-		const domicilioFiscalReceptor = await db.sequelize.models.domicilios.findByPk(dataRazonSocial.domicilio.id,{include: relaciones})
-		
-		const pagosFacturacion = await db.sequelize.models.pagos_facturacion.findAll({where:{id_pago:pago.id}, paranoid: false })
-		if(pagosFacturacion.length < 1){
-			return res.status(400).send({ status: false, msg: `El pago no tiene documentos relacionados`});
+		const pago = await db.sequelize.models.pagos.findByPk(id, {include:relaciones,paranoid: false});
+		if(pago.cfdi != null){
+			return res.status(400).send({ validado: false, msg: "El pago ya fue timbrado" });
 		}
 
-		const decimales = 6
-		const decimalesTotales = 2
-		const monedaPago = pago.moneda
-		const metodoPago = pago.metodo_pago
-		const dataTimbrado = {
-			pagos:{
-				pago: {},
-				totales: {
-					TotalTrasladosBaseIVA16: 0,
-					TotalTrasladosImpuestoIVA16: 0,
-					TotalTrasladosBaseIVA0: 0,
-					TotalTrasladosImpuestoIVA0: 0,
-					MontoTotalPagos: 0
-				}
-			}
-		}
-		const marca = pago.marca
-		var porcentajePagado
+
+		const fechaPago = moment(pago.fecha_pago).tz('America/Mexico_City');
+		const fechaLimiteTimbrado = fechaPago.clone().add(1, 'month').date(5).set({ hour: 12, minute: 0, second: 0, millisecond: 0 }); 
+		const now = moment().tz('America/Mexico_City')
+		const fechaValidaTimbrar = now <= fechaLimiteTimbrado
+
 		const razonSocialReceptor = await db.sequelize.models.razones_sociales.findByPk(pago.id_razon_social, { include:['regimen_fiscal','uso_cfdi','forma_pago','metodo_pago','nacionalidad_timbrado'],paranoid: false });
-		const ImpuestosP = []
-		const ImpuestosPSave = []
-		let contador = 0
-		const dataBase = {}
+		if(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx' && pago.metodo_pago.clave.toLowerCase() == "ppd" && /*fechaValidaTimbrar &&*/ pago.marca.pais.clave.toLowerCase() == "mx"){
+			const { getDataDoc, timbrarPago } = require('./cfdis.controller')
+			const datoFacturacionEmisor = await db.sequelize.models.datos_facturacion.findByPk(pago.marca.id_dato_facturacion, { include:['regimen_fiscal'],paranoid: false });
+			const findRelaciones = new Relaciones(['estado.pais.continente'],['estado.pais.continente'],db.sequelize.models)
+			const relaciones = await findRelaciones.getRelaciones()
+			const dataRazonSocial = await db.sequelize.models.razones_sociales_domicilios.findOne({ where:{id_razon_social:pago.id_razon_social, tipo: 'F'}, include:['domicilio'],paranoid: false });
+			const domicilioFiscalReceptor = await db.sequelize.models.domicilios.findByPk(dataRazonSocial.domicilio.id,{include: relaciones})
+			
+			const pagosFacturacion = await db.sequelize.models.pagos_facturacion.findAll({where:{id_pago:pago.id}, paranoid: false })
+			if(pagosFacturacion.length < 1){
+				return res.status(400).send({ status: false, msg: `El pago no tiene documentos relacionados`});
+			}
 
-
-		for(const pagoFacturacion of pagosFacturacion){
-			const cXc = await db.sequelize.models.cuentas_por_cobrar.findByPk(pagoFacturacion.id_cuenta_por_cobrar);
-			const factura = await db.sequelize.models.facturas.findByPk(cXc.id_factura, { include:['moneda','factura_detalles','cfdi'] });
-			if(factura.id_cfdi == null){
-				return res.status(400).send({ validado: false, msg: "El pago no puede ser timbrado. La factura con referencia " + factura.referencia + " no se encuentra timbrada." });
-			}
-			const saldoCxC = parseFloat(pagoFacturacion.saldo_anterior)
-			const monedaCxc = factura.moneda.clave
-			if(dataTimbrado.pagos.pago[monedaCxc] === undefined){
-				dataTimbrado.pagos.pago[monedaCxc] = {
-					FechaPago: moment(pago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DDTHH:mm:ss'),
-					FormaDePagoP: formaPago.clave,
-					MonedaP: monedaPago.clave,
-					TipoCambioP: 1,
-					Monto: 0,
-					DoctoRelacionados:[],
-				}
-			}
-			let tipoCambioSelected = undefined
-			const clienteRS = await db.sequelize.models.clientes_razones_sociales.findOne({where:{id_razon_social: factura.id_razon_social},include: ['cliente']})
-			const cliente = clienteRS.cliente;
-			if(parametros.tipoCambioManual !== null && parametros.tipoCambioManual !== undefined && parametros.tipoCambioManual !== "" && parseFloat(parametros.tipoCambioManual) > 0 && cliente.can_tc_manual == true){
-				tipoCambioSelected = {
-					tipo_cambio: parseFloat(parametros.tipoCambioManual)
-				}
-			}else{
-				//Se obtiene el tipo de cambio del dia
-				let fechaString = moment(registroPago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DD')
-				let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
-			
-				let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
-				if(doit !== true){
-					return doit
-				}
-				tipoCambioSelected = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaString}});
-				if(tipoCambioSelected == undefined){
-					return res.status(400).send({ status: false, msg: `Tipo de cambio no encontrado`});
-				}
-			}
-			//Se carga el tipo de cambio dependiendo si se paga con mxn o usd
-			dataTimbrado.pagos.pago[monedaCxc].TipoCambioP = monedaPago.clave.toLowerCase() == 'mxn' ? 1 : tipoCambioSelected.tipo_cambio
-			//Si la moneda del pago es distinta a la moneda del documento relacionado se actualiza el valor de la equivalencia
-			let equivalencia = 1
-			if(monedaCxc != monedaPago.clave){
-				//Si la moneda del documento relacionado es mxn la equivalencia es el tipo de cambio
-				equivalencia = tipoCambioSelected.tipo_cambio
-				if(monedaCxc != "MXN"){
-					//Si la moneda del documento relacionado es usd la equivalencia es el 1 / tipo de cambio
-					equivalencia = parseFloat((parseFloat((1 / tipoCambioSelected.tipo_cambio))).toFixed(8))
-				}
-			}
-			//Se calcula el total del pago en la moneda del documento relacionado
-			const total = parseFloat(pagoFacturacion.monto)
-			
-			var totalPagoMonedaCxC = total
-			if(totalPagoMonedaCxC > saldoCxC && saldoCxC > 0){
-				totalPagoMonedaCxC = parseFloat((parseFloat(saldoCxC)).toFixed(decimalesTotales))
-			}
-			//Se calcula el nuevo saldo de la cuenta por cobrar
-			const nuevoSaldoCxC = parseFloat(pagoFacturacion.saldo_nuevo)
-			
-			//Se calcula el total de la factura relacionada a la cuenta por cobrar
-			var subtotalFactura = 0
-			var impuestoFactura = 0
-			var descuentoFactura = 0
-			const ImpuestosDR = []
-			for(const detalle of factura.factura_detalles){
-				subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
-				impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
-				descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
-			}
-			const totalFactura = parseFloat(parseFloat(subtotalFactura + impuestoFactura - descuentoFactura).toFixed(2))
-			
-			//Se calcula el porcentajePagado = valor pagado / valor factura
-			porcentajePagado = parseFloat(parseFloat(totalPagoMonedaCxC).toFixed(2))/totalFactura > 1 ? 1 : parseFloat(parseFloat(totalPagoMonedaCxC).toFixed(2))/totalFactura
-			if(metodoPago.clave.toLowerCase() == "pue"){
-				if(porcentajePagado !== 1 && parseFloat(saldoCxC).toFixed(2) != totalPagoMonedaCxC){
-					return res.status(400).send({ status: false, cxc: pagoFacturacion.id_cuenta_por_cobrar, saldoCxC: parseFloat(parseFloat(saldoCxC).toFixed(2)),  msg: "El metodo de pago es PUE, por lo cual el pago debe ser la totalidad del saldo de la cuenta por cobrar."});
-				}
-			}
-			let totalBaseImporte = 0
-			for(const detalle of factura.factura_detalles){
-				const haveImpuesto = parseFloat(detalle.impuesto ?? 0) > 0;
-				
-				
-				let baseDR = parseFloat(parseFloat(((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado).toFixed(2))
-				const impuestoDR = !haveImpuesto ? 0 : parseFloat(parseFloat(((parseFloat(detalle.impuesto ?? 0)) * porcentajePagado)).toFixed(2))
-				const totalAux = parseFloat(parseFloat((((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado) + ((parseFloat(detalle.impuesto ?? impuestoCertificado)) * porcentajePagado)).toFixed(2))
-				if(totalAux - (baseDR + impuestoDR) > 0){
-					baseDR = parseFloat(parseFloat(baseDR + totalAux - (baseDR + impuestoDR)).toFixed(2))
-				}
-				totalBaseImporte = totalBaseImporte + (baseDR + impuestoDR)
-				if(ImpuestosDR.length == 0){
-					ImpuestosDR.push({
-						BaseDR: parseFloat(parseFloat(baseDR)) ,
-						ImpuestoDR: "002",
-						TipoFactorDR: "Tasa",
-						TasaOCuotaDR: impuestoDR > 0 ? "0.160000" :"0.000000",
-						ImporteDR: parseFloat(parseFloat(impuestoDR)),
-					})
-				}else{
-					var index = -1
-					const tasaOCuotaDR = impuestoDR > 0 ? "0.160000" :"0.000000"
-					for (let i = 0; i < ImpuestosDR.length; i++) {
-						const impuestoDR = ImpuestosDR[i];
-						if(impuestoDR.TasaOCuotaDR == tasaOCuotaDR){
-							index = i;
-						}
+			const decimales = 6
+			const decimalesTotales = 2
+			const monedaPago = pago.moneda
+			const metodoPago = pago.metodo_pago
+			const dataTimbrado = {
+				pagos:{
+					pago: {},
+					totales: {
+						TotalTrasladosBaseIVA16: 0,
+						TotalTrasladosImpuestoIVA16: 0,
+						TotalTrasladosBaseIVA0: 0,
+						TotalTrasladosImpuestoIVA0: 0,
+						MontoTotalPagos: 0
 					}
-					if(index >= 0){
-						ImpuestosDR[index].BaseDR = ImpuestosDR[index].BaseDR + parseFloat(parseFloat(baseDR))
-						ImpuestosDR[index].ImporteDR = ImpuestosDR[index].ImporteDR + parseFloat(parseFloat(impuestoDR))
-					} else{
+				}
+			}
+			const marca = pago.marca
+			var porcentajePagado
+			const razonSocialReceptor = await db.sequelize.models.razones_sociales.findByPk(pago.id_razon_social, { include:['regimen_fiscal','uso_cfdi','forma_pago','metodo_pago','nacionalidad_timbrado'],paranoid: false });
+			const ImpuestosP = []
+			const ImpuestosPSave = []
+			let contador = 0
+			const dataBase = {}
+
+
+			for(const pagoFacturacion of pagosFacturacion){
+				const cXc = await db.sequelize.models.cuentas_por_cobrar.findByPk(pagoFacturacion.id_cuenta_por_cobrar);
+				const factura = await db.sequelize.models.facturas.findByPk(cXc.id_factura, { include:['moneda','factura_detalles','cfdi'] });
+				if(factura.id_cfdi == null){
+					return res.status(400).send({ validado: false, msg: "El pago no puede ser timbrado. La factura con referencia " + factura.referencia + " no se encuentra timbrada." });
+				}
+				const saldoCxC = parseFloat(pagoFacturacion.saldo_anterior)
+				const monedaCxc = factura.moneda.clave
+				if(dataTimbrado.pagos.pago[monedaCxc] === undefined){
+					dataTimbrado.pagos.pago[monedaCxc] = {
+						FechaPago: moment(pago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DDTHH:mm:ss'),
+						FormaDePagoP: formaPago.clave,
+						MonedaP: monedaPago.clave,
+						TipoCambioP: 1,
+						Monto: 0,
+						DoctoRelacionados:[],
+					}
+				}
+				let tipoCambioSelected = undefined
+				const clienteRS = await db.sequelize.models.clientes_razones_sociales.findOne({where:{id_razon_social: factura.id_razon_social},include: ['cliente']})
+				const cliente = clienteRS.cliente;
+				if(parametros.tipoCambioManual !== null && parametros.tipoCambioManual !== undefined && parametros.tipoCambioManual !== "" && parseFloat(parametros.tipoCambioManual) > 0 && cliente.can_tc_manual == true){
+					tipoCambioSelected = {
+						tipo_cambio: parseFloat(parametros.tipoCambioManual)
+					}
+				}else{
+					//Se obtiene el tipo de cambio del dia
+					let fechaString = moment(pago.fecha_pago).tz('America/Mexico_City').format('YYYY-MM-DD')
+					let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
+				
+					let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
+					if(doit !== true){
+						return doit
+					}
+					tipoCambioSelected = await db.sequelize.models.tipos_cambio_futuro.findOne({where:{fecha: fechaString}});
+					if(tipoCambioSelected == undefined){
+						return res.status(400).send({ status: false, msg: `Tipo de cambio no encontrado`});
+					}
+				}
+				//Se carga el tipo de cambio dependiendo si se paga con mxn o usd
+				dataTimbrado.pagos.pago[monedaCxc].TipoCambioP = monedaPago.clave.toLowerCase() == 'mxn' ? 1 : tipoCambioSelected.tipo_cambio
+				//Si la moneda del pago es distinta a la moneda del documento relacionado se actualiza el valor de la equivalencia
+				let equivalencia = 1
+				if(monedaCxc != monedaPago.clave){
+					//Si la moneda del documento relacionado es mxn la equivalencia es el tipo de cambio
+					equivalencia = tipoCambioSelected.tipo_cambio
+					if(monedaCxc != "MXN"){
+						//Si la moneda del documento relacionado es usd la equivalencia es el 1 / tipo de cambio
+						equivalencia = parseFloat((parseFloat((1 / tipoCambioSelected.tipo_cambio))).toFixed(8))
+					}
+				}
+				//Se calcula el total del pago en la moneda del documento relacionado
+				const total = parseFloat(pagoFacturacion.monto)
+				
+				var totalPagoMonedaCxC = total
+				if(totalPagoMonedaCxC > saldoCxC && saldoCxC > 0){
+					totalPagoMonedaCxC = parseFloat((parseFloat(saldoCxC)).toFixed(decimalesTotales))
+				}
+				//Se calcula el nuevo saldo de la cuenta por cobrar
+				const nuevoSaldoCxC = parseFloat(pagoFacturacion.saldo_nuevo)
+				
+				//Se calcula el total de la factura relacionada a la cuenta por cobrar
+				var subtotalFactura = 0
+				var impuestoFactura = 0
+				var descuentoFactura = 0
+				const ImpuestosDR = []
+				for(const detalle of factura.factura_detalles){
+					subtotalFactura = subtotalFactura + parseFloat(detalle.subtotal ?? 0)
+					impuestoFactura = impuestoFactura + parseFloat(detalle.impuesto ?? 0)
+					descuentoFactura = descuentoFactura + parseFloat(detalle.descuento ?? 0)
+				}
+				const totalFactura = parseFloat(parseFloat(subtotalFactura + impuestoFactura - descuentoFactura).toFixed(2))
+				
+				//Se calcula el porcentajePagado = valor pagado / valor factura
+				porcentajePagado = parseFloat(parseFloat(totalPagoMonedaCxC).toFixed(2))/totalFactura > 1 ? 1 : parseFloat(parseFloat(totalPagoMonedaCxC).toFixed(2))/totalFactura
+				if(metodoPago.clave.toLowerCase() == "pue"){
+					if(porcentajePagado !== 1 && parseFloat(saldoCxC).toFixed(2) != totalPagoMonedaCxC){
+						return res.status(400).send({ status: false, cxc: pagoFacturacion.id_cuenta_por_cobrar, saldoCxC: parseFloat(parseFloat(saldoCxC).toFixed(2)),  msg: "El metodo de pago es PUE, por lo cual el pago debe ser la totalidad del saldo de la cuenta por cobrar."});
+					}
+				}
+				let totalBaseImporte = 0
+				for(const detalle of factura.factura_detalles){
+					const haveImpuesto = parseFloat(detalle.impuesto ?? 0) > 0;
+					
+					
+					let baseDR = parseFloat(parseFloat(((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado).toFixed(2))
+					const impuestoDR = !haveImpuesto ? 0 : parseFloat(parseFloat(((parseFloat(detalle.impuesto ?? 0)) * porcentajePagado)).toFixed(2))
+					const totalAux = parseFloat(parseFloat((((parseFloat(detalle.subtotal ?? 0)) - (parseFloat(detalle.descuento ?? 0))) * porcentajePagado) + ((parseFloat(detalle.impuesto ?? impuestoCertificado)) * porcentajePagado)).toFixed(2))
+					if(totalAux - (baseDR + impuestoDR) > 0){
+						baseDR = parseFloat(parseFloat(baseDR + totalAux - (baseDR + impuestoDR)).toFixed(2))
+					}
+					totalBaseImporte = totalBaseImporte + (baseDR + impuestoDR)
+					if(ImpuestosDR.length == 0){
 						ImpuestosDR.push({
-							BaseDR: parseFloat(parseFloat(baseDR)),
+							BaseDR: parseFloat(parseFloat(baseDR)) ,
 							ImpuestoDR: "002",
 							TipoFactorDR: "Tasa",
 							TasaOCuotaDR: impuestoDR > 0 ? "0.160000" :"0.000000",
-							ImporteDR: parseFloat(parseFloat(impuestoDR))
+							ImporteDR: parseFloat(parseFloat(impuestoDR)),
 						})
-					}
-				}
-			}
-			if(parseFloat(parseFloat(porcentajePagado).toFixed(2)) == 1 ){
-				if(totalPagoMonedaCxC - parseFloat(parseFloat(totalBaseImporte).toFixed(2)) > 0){
-					ImpuestosDR[0].BaseDR = parseFloat(parseFloat(ImpuestosDR[0].BaseDR + (totalPagoMonedaCxC - (parseFloat(parseFloat(totalBaseImporte).toFixed(2))))).toFixed(2))
-				}
-			}
-			for(const impuetoDR of ImpuestosDR){
-				if(parseFloat(parseFloat(impuetoDR.BaseDR* 0.16).toFixed(2)) != impuetoDR.ImporteDR && impuetoDR.TasaOCuotaDR =="0.160000"){
-					impuetoDR.ImporteDR = parseFloat(parseFloat(impuetoDR.BaseDR* 0.16).toFixed(2))
-				}
-			}
-			
-			const numParcialidad = pagoFacturacion.parcialidad
-			dataTimbrado.pagos.pago[monedaCxc].DoctoRelacionados.push({
-				IdDocumento: factura.id_cfdi !== null? factura.cfdi.folio_fiscal: '',
-				MonedaDR: monedaCxc,
-				EquivalenciaDR: equivalencia,
-				NumParcialidad: numParcialidad,
-				ImpSaldoAnt: parseFloat(pagoFacturacion.saldo_anterior),
-				ImpPagado: parseFloat(pagoFacturacion.monto),
-				ImpSaldoInsoluto: parseFloat(pagoFacturacion.saldo_nuevo),
-				ObjetoImpDR: '02',
-				ImpuestosDR: ImpuestosDR
-			})
-			for(const impuestoDR of ImpuestosDR){
-				if(dataBase[monedaCxc] === undefined){
-					dataBase[monedaCxc] = {
-						base0: 0,
-						base16: 0,
-						impuesto16: 0,
-						equivalencia: equivalencia
-					}
-				}
-				if(ImpuestosP.length == 0){
-					if(impuestoDR.ImporteDR == "0.000000"){
-						dataBase[monedaCxc].base0 = parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2))
 					}else{
-						dataBase[monedaCxc].base16 = parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2))
-						dataBase[monedaCxc].impuesto16 = parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2))
-					}
-					ImpuestosP.push({
-						BaseP: parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)),
-						ImpuestoP: "002",
-						TipoFactorP: "Tasa",
-						TasaOCuotaP: impuestoDR.ImporteDR > 0 ? "0.160000" :"0.000000",
-						ImporteP: parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2)),
-						equivalencia: equivalencia,
-						moneda: monedaCxc
-					})
-				}else{
-					var index = -1
-					const tasaOCuotaP = impuestoDR.ImporteDR > 0 ? "0.160000" :"0.000000"
-					for (let i = 0; i < ImpuestosP.length; i++) {
-						const impuestoP = ImpuestosP[i];
-						if(impuestoP.TasaOCuotaP == tasaOCuotaP && impuestoP.moneda == monedaCxc){
-							index = i;
+						var index = -1
+						const tasaOCuotaDR = impuestoDR > 0 ? "0.160000" :"0.000000"
+						for (let i = 0; i < ImpuestosDR.length; i++) {
+							const impuestoDR = ImpuestosDR[i];
+							if(impuestoDR.TasaOCuotaDR == tasaOCuotaDR){
+								index = i;
+							}
+						}
+						if(index >= 0){
+							ImpuestosDR[index].BaseDR = ImpuestosDR[index].BaseDR + parseFloat(parseFloat(baseDR))
+							ImpuestosDR[index].ImporteDR = ImpuestosDR[index].ImporteDR + parseFloat(parseFloat(impuestoDR))
+						} else{
+							ImpuestosDR.push({
+								BaseDR: parseFloat(parseFloat(baseDR)),
+								ImpuestoDR: "002",
+								TipoFactorDR: "Tasa",
+								TasaOCuotaDR: impuestoDR > 0 ? "0.160000" :"0.000000",
+								ImporteDR: parseFloat(parseFloat(impuestoDR))
+							})
 						}
 					}
-					if(index >= 0){
-						ImpuestosP[index].BaseP = ImpuestosP[index].BaseP + (parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)))
-						ImpuestosP[index].ImporteP = ImpuestosP[index].ImporteP + (parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2)))
-						if(impuestoDR.ImporteDR == "0.000000"){
-							dataBase[monedaCxc].base0 = dataBase[monedaCxc].base0 + (parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)))
-						}else{
-							dataBase[monedaCxc].base16 = dataBase[monedaCxc].base16 + (parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)))
-							dataBase[monedaCxc].impuesto16 = dataBase[monedaCxc].impuesto16 + (parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2)))
+				}
+				if(parseFloat(parseFloat(porcentajePagado).toFixed(2)) == 1 ){
+					if(totalPagoMonedaCxC - parseFloat(parseFloat(totalBaseImporte).toFixed(2)) > 0){
+						ImpuestosDR[0].BaseDR = parseFloat(parseFloat(ImpuestosDR[0].BaseDR + (totalPagoMonedaCxC - (parseFloat(parseFloat(totalBaseImporte).toFixed(2))))).toFixed(2))
+					}
+				}
+				for(const impuetoDR of ImpuestosDR){
+					if(parseFloat(parseFloat(impuetoDR.BaseDR* 0.16).toFixed(2)) != impuetoDR.ImporteDR && impuetoDR.TasaOCuotaDR =="0.160000"){
+						impuetoDR.ImporteDR = parseFloat(parseFloat(impuetoDR.BaseDR* 0.16).toFixed(2))
+					}
+				}
+				
+				const numParcialidad = pagoFacturacion.parcialidad
+				dataTimbrado.pagos.pago[monedaCxc].DoctoRelacionados.push({
+					IdDocumento: factura.id_cfdi !== null? factura.cfdi.folio_fiscal: '',
+					MonedaDR: monedaCxc,
+					EquivalenciaDR: equivalencia,
+					NumParcialidad: numParcialidad,
+					ImpSaldoAnt: parseFloat(pagoFacturacion.saldo_anterior),
+					ImpPagado: parseFloat(pagoFacturacion.monto),
+					ImpSaldoInsoluto: parseFloat(pagoFacturacion.saldo_nuevo),
+					ObjetoImpDR: '02',
+					ImpuestosDR: ImpuestosDR
+				})
+				for(const impuestoDR of ImpuestosDR){
+					if(dataBase[monedaCxc] === undefined){
+						dataBase[monedaCxc] = {
+							base0: 0,
+							base16: 0,
+							impuesto16: 0,
+							equivalencia: equivalencia
 						}
-					} else{
+					}
+					if(ImpuestosP.length == 0){
 						if(impuestoDR.ImporteDR == "0.000000"){
 							dataBase[monedaCxc].base0 = parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2))
 						}else{
@@ -1085,159 +1052,196 @@ async function reTimbrarPago(req, res){
 							equivalencia: equivalencia,
 							moneda: monedaCxc
 						})
+					}else{
+						var index = -1
+						const tasaOCuotaP = impuestoDR.ImporteDR > 0 ? "0.160000" :"0.000000"
+						for (let i = 0; i < ImpuestosP.length; i++) {
+							const impuestoP = ImpuestosP[i];
+							if(impuestoP.TasaOCuotaP == tasaOCuotaP && impuestoP.moneda == monedaCxc){
+								index = i;
+							}
+						}
+						if(index >= 0){
+							ImpuestosP[index].BaseP = ImpuestosP[index].BaseP + (parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)))
+							ImpuestosP[index].ImporteP = ImpuestosP[index].ImporteP + (parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2)))
+							if(impuestoDR.ImporteDR == "0.000000"){
+								dataBase[monedaCxc].base0 = dataBase[monedaCxc].base0 + (parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)))
+							}else{
+								dataBase[monedaCxc].base16 = dataBase[monedaCxc].base16 + (parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)))
+								dataBase[monedaCxc].impuesto16 = dataBase[monedaCxc].impuesto16 + (parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2)))
+							}
+						} else{
+							if(impuestoDR.ImporteDR == "0.000000"){
+								dataBase[monedaCxc].base0 = parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2))
+							}else{
+								dataBase[monedaCxc].base16 = parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2))
+								dataBase[monedaCxc].impuesto16 = parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2))
+							}
+							ImpuestosP.push({
+								BaseP: parseFloat(parseFloat(impuestoDR.BaseDR).toFixed(2)),
+								ImpuestoP: "002",
+								TipoFactorP: "Tasa",
+								TasaOCuotaP: impuestoDR.ImporteDR > 0 ? "0.160000" :"0.000000",
+								ImporteP: parseFloat(parseFloat(impuestoDR.ImporteDR).toFixed(2)),
+								equivalencia: equivalencia,
+								moneda: monedaCxc
+							})
+						}
 					}
 				}
-			}
-			contador = contador +1
-			if(contador == pagosFacturacion.length){
-				for(const key in dataBase){
-					let montoAux = 0
-					for(const docRel of dataTimbrado.pagos.pago[key].DoctoRelacionados){
-						montoAux = montoAux + docRel.ImpPagado
+				contador = contador +1
+				if(contador == pagosFacturacion.length){
+					for(const key in dataBase){
+						let montoAux = 0
+						for(const docRel of dataTimbrado.pagos.pago[key].DoctoRelacionados){
+							montoAux = montoAux + docRel.ImpPagado
+						}
+						if(monedaPago.clave == "USD"){
+							dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(parseFloat((parseFloat((dataBase[key].base0)) + parseFloat((dataBase[key].base16)) + parseFloat((dataBase[key].impuesto16))))))
+							dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(dataTimbrado.pagos.pago[key].Monto / dataBase[key].equivalencia).toFixed(2))
+							if(dataTimbrado.pagos.pago[key].Monto != montoAux){
+								dataTimbrado.pagos.pago[key].Monto = montoAux
+							}
+							dataTimbrado.pagos.totales.MontoTotalPagos = dataTimbrado.pagos.totales.MontoTotalPagos + dataTimbrado.pagos.pago[key].Monto
+		
+							dataBase[key].base16 = parseFloat(parseFloat(dataBase[key].base16 / dataBase[key].equivalencia).toFixed(2))
+							dataBase[key].base0 = parseFloat(parseFloat(dataBase[key].base0 / dataBase[key].equivalencia).toFixed(2))
+							dataBase[key].impuesto16 = parseFloat(parseFloat(dataBase[key].impuesto16 / dataBase[key].equivalencia).toFixed(2))
+		
+							dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 + dataBase[key].base16
+							dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 + dataBase[key].impuesto16
+							dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 + dataBase[key].base0
+						}else{
+							dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(parseFloat((parseFloat((dataBase[key].base0)) + parseFloat((dataBase[key].base16)) + parseFloat((dataBase[key].impuesto16))))))
+							if(dataTimbrado.pagos.pago[key].Monto != montoAux){
+								dataTimbrado.pagos.pago[key].Monto = montoAux
+							}
+							dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(dataTimbrado.pagos.pago[key].Monto / dataBase[key].equivalencia).toFixed(2))
+							dataTimbrado.pagos.totales.MontoTotalPagos = dataTimbrado.pagos.totales.MontoTotalPagos + dataTimbrado.pagos.pago[key].Monto
+		
+							dataBase[key].base16 = parseFloat(parseFloat(dataBase[key].base16 / dataBase[key].equivalencia).toFixed(2))
+							dataBase[key].base0 = parseFloat(parseFloat(dataBase[key].base0 / dataBase[key].equivalencia).toFixed(2))
+							dataBase[key].impuesto16 = parseFloat(parseFloat(dataBase[key].impuesto16 / dataBase[key].equivalencia).toFixed(2))
+		
+							dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 + dataBase[key].base16
+							dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 + dataBase[key].impuesto16
+							dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 + dataBase[key].base0
+						}
 					}
 					if(monedaPago.clave == "USD"){
-						dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(parseFloat((parseFloat((dataBase[key].base0)) + parseFloat((dataBase[key].base16)) + parseFloat((dataBase[key].impuesto16))))))
-						dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(dataTimbrado.pagos.pago[key].Monto / dataBase[key].equivalencia).toFixed(2))
-						if(dataTimbrado.pagos.pago[key].Monto != montoAux){
-							dataTimbrado.pagos.pago[key].Monto = montoAux
-						}
-						dataTimbrado.pagos.totales.MontoTotalPagos = dataTimbrado.pagos.totales.MontoTotalPagos + dataTimbrado.pagos.pago[key].Monto
-	
-						dataBase[key].base16 = parseFloat(parseFloat(dataBase[key].base16 / dataBase[key].equivalencia).toFixed(2))
-						dataBase[key].base0 = parseFloat(parseFloat(dataBase[key].base0 / dataBase[key].equivalencia).toFixed(2))
-						dataBase[key].impuesto16 = parseFloat(parseFloat(dataBase[key].impuesto16 / dataBase[key].equivalencia).toFixed(2))
-	
-						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 + dataBase[key].base16
-						dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 + dataBase[key].impuesto16
-						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 + dataBase[key].base0
-					}else{
-						dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(parseFloat((parseFloat((dataBase[key].base0)) + parseFloat((dataBase[key].base16)) + parseFloat((dataBase[key].impuesto16))))))
-						if(dataTimbrado.pagos.pago[key].Monto != montoAux){
-							dataTimbrado.pagos.pago[key].Monto = montoAux
-						}
-						dataTimbrado.pagos.pago[key].Monto = parseFloat(parseFloat(dataTimbrado.pagos.pago[key].Monto / dataBase[key].equivalencia).toFixed(2))
-						dataTimbrado.pagos.totales.MontoTotalPagos = dataTimbrado.pagos.totales.MontoTotalPagos + dataTimbrado.pagos.pago[key].Monto
-	
-						dataBase[key].base16 = parseFloat(parseFloat(dataBase[key].base16 / dataBase[key].equivalencia).toFixed(2))
-						dataBase[key].base0 = parseFloat(parseFloat(dataBase[key].base0 / dataBase[key].equivalencia).toFixed(2))
-						dataBase[key].impuesto16 = parseFloat(parseFloat(dataBase[key].impuesto16 / dataBase[key].equivalencia).toFixed(2))
-	
-						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 + dataBase[key].base16
-						dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 + dataBase[key].impuesto16
-						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 + dataBase[key].base0
+						const tipoCambio = tipoCambioSelected.tipo_cambio;
+						
+						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 * tipoCambio).toFixed(6)))
+						dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 * tipoCambio).toFixed(6)))
+						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 * tipoCambio).toFixed(6)))
+						dataTimbrado.pagos.totales.MontoTotalPagos = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.MontoTotalPagos * tipoCambio).toFixed(6)))
+
+						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = parseFloat(dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16.toFixed(2))
+						dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = parseFloat(dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16.toFixed(2))
+						dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = parseFloat(dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0.toFixed(2))
+						dataTimbrado.pagos.totales.MontoTotalPagos = parseFloat(dataTimbrado.pagos.totales.MontoTotalPagos.toFixed(2))
 					}
-				}
-				if(monedaPago.clave == "USD"){
-                    const tipoCambio = tipoCambioSelected.tipo_cambio;
-					
-                    dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 * tipoCambio).toFixed(6)))
-                    dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 * tipoCambio).toFixed(6)))
-                    dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 * tipoCambio).toFixed(6)))
-                    dataTimbrado.pagos.totales.MontoTotalPagos = roundToTwoDecimals(parseFloat((dataTimbrado.pagos.totales.MontoTotalPagos * tipoCambio).toFixed(6)))
-
-                    dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 = parseFloat(dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16.toFixed(2))
-                    dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16 = parseFloat(dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16.toFixed(2))
-                    dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 = parseFloat(dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0.toFixed(2))
-                    dataTimbrado.pagos.totales.MontoTotalPagos = parseFloat(dataTimbrado.pagos.totales.MontoTotalPagos.toFixed(2))
-				}
-				const validMontoTotal = convert((dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 + dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 + dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16), 1, decimalesTotales)
-				const keys = Object.keys(dataTimbrado.pagos.pago)
-				if(keys.length == 1){
-					const key = keys[0]
-					const montoPago = monedaPago.clave == "USD" ? parseFloat(parseFloat((Math.round(((dataTimbrado.pagos.pago[key].Monto * tipoCambioSelected.tipo_cambio) + Number.EPSILON) * 100) / 100)).toFixed(2)) : dataTimbrado.pagos.pago[key].Monto
-					if((validMontoTotal != dataTimbrado.pagos.totales.MontoTotalPagos && (validMontoTotal == (dataTimbrado.pagos.totales.MontoTotalPagos + 0.01) || validMontoTotal == (dataTimbrado.pagos.totales.MontoTotalPagos - 0.01))  && dataTimbrado.pagos.totales.MontoTotalPagos != montoPago)){
-						dataTimbrado.pagos.totales.MontoTotalPagos = validMontoTotal
+					const validMontoTotal = convert((dataTimbrado.pagos.totales.TotalTrasladosBaseIVA16 + dataTimbrado.pagos.totales.TotalTrasladosBaseIVA0 + dataTimbrado.pagos.totales.TotalTrasladosImpuestoIVA16), 1, decimalesTotales)
+					const keys = Object.keys(dataTimbrado.pagos.pago)
+					if(keys.length == 1){
+						const key = keys[0]
+						const montoPago = monedaPago.clave == "USD" ? parseFloat(parseFloat((Math.round(((dataTimbrado.pagos.pago[key].Monto * tipoCambioSelected.tipo_cambio) + Number.EPSILON) * 100) / 100)).toFixed(2)) : dataTimbrado.pagos.pago[key].Monto
+						if((validMontoTotal != dataTimbrado.pagos.totales.MontoTotalPagos && (validMontoTotal == (dataTimbrado.pagos.totales.MontoTotalPagos + 0.01) || validMontoTotal == (dataTimbrado.pagos.totales.MontoTotalPagos - 0.01))  && dataTimbrado.pagos.totales.MontoTotalPagos != montoPago)){
+							dataTimbrado.pagos.totales.MontoTotalPagos = validMontoTotal
+						}
 					}
+
 				}
+			}
+			for(const impuestoP of ImpuestosP){
+				if(dataTimbrado.pagos.pago[impuestoP.moneda].ImpuestosP == undefined){
+					dataTimbrado.pagos.pago[impuestoP.moneda].ImpuestosP = []
+				}
+				impuestoP.BaseP = convert(impuestoP.BaseP, impuestoP.equivalencia, decimalesTotales)
+				impuestoP.ImporteP = convert(impuestoP.ImporteP, impuestoP.equivalencia, decimalesTotales)
+				dataTimbrado.pagos.pago[impuestoP.moneda].ImpuestosP.push(impuestoP)
+			}
 
+			var emisor = undefined;
+			var receptor = undefined;
+			const env = process.env.NODE_ENV;
+			var cer
+			var key
+			var password
+			if((env == 'development' || env == 'test')){
+				emisor = {
+					rfc: 'EKU9003173C9',
+					nombre: 'ESCUELA KEMPER URGATE',
+					regimenFiscal: '601',
+				}
+				receptor = {
+					rfc: 'MASO451221PM4',
+					nombre: 'MARIA OLIVIA MARTINEZ SAGAZ',
+					domicilioFiscal: '80290',
+					regimenFiscal: '612',
+					usoCFDI: 'S01',
+				}
+				password = '12345678a'
+				cer = await getDataDoc('CSD_Sucursal_1_EKU9003173C9_20230517_223850.cer')
+				key = await getDataDoc('CSD_Sucursal_1_EKU9003173C9_20230517_223850.key')
+			} else{
+				emisor = {
+					rfc: datoFacturacionEmisor.no_identificacion,
+					nombre: datoFacturacionEmisor.razon_social,
+					regimenFiscal: datoFacturacionEmisor.regimen_fiscal.clave,
+				}
+				receptor = {
+					rfc: razonSocialReceptor.no_identificacion,
+					nombre: razonSocialReceptor.razon_social,
+					domicilioFiscal: domicilioFiscalReceptor.codigo_postal,
+					regimenFiscal: razonSocialReceptor.regimen_fiscal.clave,
+					usoCFDI: razonSocialReceptor.uso_cfdi.clave
+				}
+				cer = datoFacturacionEmisor.cer
+				key = datoFacturacionEmisor.key
+				password = datoFacturacionEmisor.password
 			}
-		}
-		for(const impuestoP of ImpuestosP){
-			if(dataTimbrado.pagos.pago[impuestoP.moneda].ImpuestosP == undefined){
-				dataTimbrado.pagos.pago[impuestoP.moneda].ImpuestosP = []
+			dataTimbrado.certificado = {
+				cer:cer,
+				key:key,
+				password: password,
+				folio: pago.folio,
+				lugarExpedicion: marca.domicilio.codigo_postal,
+				tipoDeComprobante: "P"
 			}
-			impuestoP.BaseP = convert(impuestoP.BaseP, impuestoP.equivalencia, decimalesTotales)
-			impuestoP.ImporteP = convert(impuestoP.ImporteP, impuestoP.equivalencia, decimalesTotales)
-			dataTimbrado.pagos.pago[impuestoP.moneda].ImpuestosP.push(impuestoP)
-		}
+			dataTimbrado.emisor = emisor
+			dataTimbrado.receptor = receptor
+			dataTimbrado.env = env
 
-		var emisor = undefined;
-		var receptor = undefined;
-		const env = process.env.NODE_ENV;
-		var cer
-		var key
-		var password
-		if((env == 'development' || env == 'test')){
-			emisor = {
-				rfc: 'EKU9003173C9',
-				nombre: 'ESCUELA KEMPER URGATE',
-				regimenFiscal: '601',
+
+			try {
+				const getCFdi = await timbrarPago(dataTimbrado,pago.id,req.usuario,razonSocialReceptor,true)
+				if(getCFdi.validado == true){
+					return res.status(200).send({ validado: true, msg: "Pago timbrado" });
+				}else{
+					return res.status(400).send(getCFdi);
+				}
+			} catch (error) {
+				return res.status(400).send({ status: false, msg: error.toString()});
 			}
-			receptor = {
-				rfc: 'MASO451221PM4',
-				nombre: 'MARIA OLIVIA MARTINEZ SAGAZ',
-				domicilioFiscal: '80290',
-				regimenFiscal: '612',
-				usoCFDI: 'S01',
-			}
-			password = '12345678a'
-			cer = await getDataDoc('CSD_Sucursal_1_EKU9003173C9_20230517_223850.cer')
-			key = await getDataDoc('CSD_Sucursal_1_EKU9003173C9_20230517_223850.key')
 		} else{
-			emisor = {
-				rfc: datoFacturacionEmisor.no_identificacion,
-				nombre: datoFacturacionEmisor.razon_social,
-				regimenFiscal: datoFacturacionEmisor.regimen_fiscal.clave,
+			const alertasTimbrado = []
+			//if(!fechaValidaTimbrar){
+			//	alertasTimbrado.push('Recuerda que el CFDI con complemento para la recepción de pagos debe emitirse a más tardar el quinto día natural del mes siguiente al que se recibió el pago.')
+			//}
+			if(!(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx')){
+				alertasTimbrado.push('La nacionalidad de timbrado de la razón social ligada al pago debe ser mexicana para timbrarlo.')
 			}
-			receptor = {
-				rfc: razonSocialReceptor.no_identificacion,
-				nombre: razonSocialReceptor.razon_social,
-				domicilioFiscal: domicilioFiscalReceptor.codigo_postal,
-				regimenFiscal: razonSocialReceptor.regimen_fiscal.clave,
-				usoCFDI: razonSocialReceptor.uso_cfdi.clave
+			if(!(pago.metodo_pago.clave.toLowerCase() == "ppd")){
+				alertasTimbrado.push('El pago no se timbra porque hay facturas con método de pago en PUE.')
 			}
-			cer = datoFacturacionEmisor.cer
-			key = datoFacturacionEmisor.key
-			password = datoFacturacionEmisor.password
-		}
-		dataTimbrado.certificado = {
-			cer:cer,
-			key:key,
-			password: password,
-			folio: pago.folio,
-			lugarExpedicion: marca.domicilio.codigo_postal,
-			tipoDeComprobante: "P"
-		}
-		dataTimbrado.emisor = emisor
-		dataTimbrado.receptor = receptor
-		dataTimbrado.env = env
-
-
-		try {
-			const getCFdi = await timbrarPago(dataTimbrado,pago.id,req.usuario,razonSocialReceptor,true)
-			if(getCFdi.validado == true){
-				return res.status(200).send({ validado: true, msg: "Pago timbrado" });
-			}else{
-				return res.status(400).send(getCFdi);
+			if(!(pago.marca.pais.clave.toLowerCase() == "mx")){
+				alertasTimbrado.push('El país de la marca ligada al pago debe ser mexicana para timbrarlo.')
 			}
-		} catch (error) {
-			return res.status(400).send({ status: false, msg: error.toString()});
+			return res.status(400).send({ validado: false, msg: "El pago no requiere timbrado", warnings: alertasTimbrado });
 		}
-	} else{
-		const alertasTimbrado = []
-		//if(!fechaValidaTimbrar){
-		//	alertasTimbrado.push('Recuerda que el CFDI con complemento para la recepción de pagos debe emitirse a más tardar el quinto día natural del mes siguiente al que se recibió el pago.')
-		//}
-		if(!(razonSocialReceptor.nacionalidad_timbrado.clave.toLowerCase() == 'mx')){
-			alertasTimbrado.push('La nacionalidad de timbrado de la razón social ligada al pago debe ser mexicana para timbrarlo.')
-		}
-		if(!(pago.metodo_pago.clave.toLowerCase() == "ppd")){
-			alertasTimbrado.push('El pago no se timbra porque hay facturas con método de pago en PUE.')
-		}
-		if(!(pago.marca.pais.clave.toLowerCase() == "mx")){
-			alertasTimbrado.push('El país de la marca ligada al pago debe ser mexicana para timbrarlo.')
-		}
-        return res.status(400).send({ validado: false, msg: "El pago no requiere timbrado", warnings: alertasTimbrado });
+	} catch (error) {
+		return res.status(500).send({ status: false, msg: "Error interno del servidor", error: error.toString()});
 	}
 }
 
