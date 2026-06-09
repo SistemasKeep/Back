@@ -601,7 +601,7 @@ async function antiguedadSaldosCxC(req, res) {
 					'Oficina': element.factura.oficina == null ? '' : element.factura.oficina.nombre,
 					'Folio': element.factura.folio,
 					'UUID': uuid,
-					'Cliente': "(" + element.factura.marca.clave + "-" +element.idCliente + ") " + element.cliente,
+					'Cliente': "(KP-" +element.idCliente + ") " + element.cliente,
 					'Marca': element.factura.marca.nombre,
 					'Razón Social': element.factura.razon_social.razon_social,
 					'Monto original': parseFloat(element.montoOriginal),
@@ -621,7 +621,7 @@ async function antiguedadSaldosCxC(req, res) {
 					hoja2.push({
 						'Marca': element.factura.marca.nombre,
 						'Agente CxC': element.agenteCxc,
-						'Clave': element.factura.marca.clave + "-" +element.idCliente,
+						'Clave': "KP-" +element.idCliente,
 						'Cliente': element.cliente,
 						'En tiempo (MXN)': element.factura.moneda.clave.toLowerCase() == 'mxn' && element.diasVencimiento >= 0 ? parseFloat(parseFloat(element.saldo).toFixed(2)) : 0,
 						'Bajo (MXN)': element.factura.moneda.clave.toLowerCase() == 'mxn' && (element.diasVencimiento <= -1 && element.diasVencimiento >= -15) ? parseFloat(parseFloat(element.saldoVencido).toFixed(2)) : 0,
@@ -641,7 +641,7 @@ async function antiguedadSaldosCxC(req, res) {
 					let elementI = -1
 					for (let index = 0; index < hoja2.length; index++) {
 						const dato = hoja2[index];
-						if(dato['Clave'] ==  element.factura.marca.clave + "-" +element.idCliente){
+						if(dato['Clave'] ==  "KP-" +element.idCliente){
 							elementI = index
 						}
 					}
@@ -663,7 +663,7 @@ async function antiguedadSaldosCxC(req, res) {
 						hoja2.push({
 							'Marca': element.factura.marca.nombre,
 							'Agente CxC': element.agenteCxc,
-							'Clave': element.factura.marca.clave + "-" +element.idCliente,
+							'Clave': "KP-" +element.idCliente,
 							'Cliente': element.cliente,
 							'En tiempo (MXN)': element.factura.moneda.clave.toLowerCase() == 'mxn' && element.diasVencimiento >= 0 ? parseFloat(parseFloat(element.saldo).toFixed(2)) : 0,
 							'Bajo (MXN)': element.factura.moneda.clave.toLowerCase() == 'mxn' && (element.diasVencimiento <= -1 && element.diasVencimiento >= -15) ? parseFloat(parseFloat(element.saldoVencido).toFixed(2)) : 0,
@@ -701,7 +701,7 @@ async function antiguedadSaldosCxC(req, res) {
 					hoja3.push({
 						'Marca': element.factura.marca.nombre,
 						'Agente CxC': element.agenteCxc,
-						'Clave': element.factura.marca.clave + "-" +element.idCliente,
+						'Clave': "KP-" +element.idCliente,
 						'Cliente': element.cliente,
 						'En tiempo': element.diasVencimiento >= 0 ? parseFloat(parseFloat(element.saldo).toFixed(2)) : 0,
 						'Bajo': (element.diasVencimiento <= -1 && element.diasVencimiento >= -15) ? parseFloat(parseFloat(element.saldoVencido).toFixed(2)) : 0,
@@ -714,7 +714,7 @@ async function antiguedadSaldosCxC(req, res) {
 					let elementI = -1
 					for (let index = 0; index < hoja3.length; index++) {
 						const dato = hoja3[index];
-						if(dato['Clave'] ==  element.factura.marca.clave + "-" +element.idCliente){
+						if(dato['Clave'] ==  "KP-" +element.idCliente){
 							elementI = index
 						}
 					}

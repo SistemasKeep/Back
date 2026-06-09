@@ -950,7 +950,7 @@ async function exportar(req, res) {
                 }
                 const totalFactura = (subtotalFactura - descuentoFactura + impuestoFactura).toFixed(2)
                 //Se obtiene el tipo de cambio del dia
-                let fechaString = moment(element.factura.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD')
+                let fechaString = moment(element.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD')
                 let fechaBusqueda = moment(fechaString).tz('America/Mexico_City')
             
                 let doit = await buscarActualiarTipoCambioSRes(fechaBusqueda)
@@ -1015,7 +1015,7 @@ async function exportar(req, res) {
                 element.factura.saldo_saldado = parseFloat((totalFactura - (element.factura.cxc != null ? element.factura.cxc.saldo : 0)).toFixed(2))
 				element.fecha_emision = element.createdAt.toISOString().slice(0, 19).replace('T', ' ');
                 //const tc = await db.sequelize.models.tipos_cambio_futuro.findByPk(element.factura.factura_detalles[0].pedido_factura?.certificado?.id_tipo_cambio_futuro);
-                element.tipo_cambio = tipoCambioDia != null ? tipoCambioDia.tipo_cambio : '';
+                element.tipo_cambio = tipoCambio;
                 const nombreCliente = await db.sequelize.models.clientes.findByPk(element.factura.factura_detalles[0].pedido_factura === element.factura.factura_detalles[0].pedido_factura || element.factura.factura_detalles[0].pedido_factura === null ? element.factura.cliente.id : element.factura.factura_detalles[0].pedido_factura.certificado.id_cliente);
                 element.cliente = nombreCliente != null ? nombreCliente.nombre : '';
 			}
@@ -1037,7 +1037,7 @@ async function exportar(req, res) {
 				'Impuesto': elemento.impuesto,
 				'Total': parseFloat(parseFloat(elemento.subtotal).toFixed(2)) +  parseFloat(parseFloat(elemento.impuesto).toFixed(2)),
 				'Moneda': elemento.factura.moneda.descripcion,
-				'Tipo de cambio': elemento.tipo_cambio,
+				'Tipo de cambio': element.tipo_cambio,
 				'Saldado': elemento.factura.factura_pagada == true ? 'Si' : 'No'
 			};
 			dataExcel.push(aux);
