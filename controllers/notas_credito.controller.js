@@ -1037,7 +1037,7 @@ async function exportar(req, res) {
 				'Impuesto': elemento.impuesto,
 				'Total': parseFloat(parseFloat(elemento.subtotal).toFixed(2)) +  parseFloat(parseFloat(elemento.impuesto).toFixed(2)),
 				'Moneda': elemento.factura.moneda.descripcion,
-				'Tipo de cambio': element.tipo_cambio,
+				'Tipo de cambio': elemento.tipo_cambio,
 				'Saldado': elemento.factura.factura_pagada == true ? 'Si' : 'No'
 			};
 			dataExcel.push(aux);
