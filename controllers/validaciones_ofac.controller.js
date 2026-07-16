@@ -8,8 +8,7 @@ const axios = require('axios');
 
 async function validarEntidad(datosEntidad){
     const headers = { 'Content-Type': 'application/json' };
-    //const validOfac = process.env.NODE_ENV == 'producction';
-    const validOfac = false;
+    const validOfac = process.env.NODE_ENV == 'producction';
     
     if(validOfac){
         const data = {
