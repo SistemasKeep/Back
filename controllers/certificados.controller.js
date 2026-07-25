@@ -3001,7 +3001,492 @@ async function ejecutarReporte(res,req,relaciones,filtro,relacionesRc,tipoDocume
 			offset,
 			limit
 		})
+
+
+const operaciones = docs.map(d => d.toJSON())		
+		const documentosFiltrados = []
+
+       if (req.query.perfil == 'all' && operaciones.length > 0) {
+
+       const ids = operaciones.map(op => op.id)
+
+		const todosCertificadosRc = await db.sequelize.models.certificados_rc.findAll({
+				where: {
+					[db.Sequelize.Op.or]: {
+						id_certificado: { [db.Sequelize.Op.in]: ids },
+						id_certificado_rc: { [db.Sequelize.Op.in]: ids }
+					}
+				},
+				include: relacionesRc
+			})
+
+		const mapCertificadosRcPorCertificado = new Map()
+		const mapCertificadosRcPorCertificadoRc = new Map()
+
+
+		for (const cr of todosCertificadosRc) {
+				if (cr.id_certificado != null) mapCertificadosRcPorCertificado.set(cr.id_certificado, cr)
+				if (cr.id_certificado_rc != null) mapCertificadosRcPorCertificadoRc.set(cr.id_certificado_rc, cr)
+			}
+
+
+	    const parametrosDetalles = [ 'atributo' ]
+			const findRelacionesDetalle = new Relaciones(parametrosDetalles, parametrosDetalles, db.sequelize.models)
+			const relacionesDetalle = await findRelacionesDetalle.getRelaciones()
+			const todosDetalles = await db.sequelize.models.detalle_certificados.findAll({
+				where: { id_certificado: { [db.Sequelize.Op.in]: ids } },
+				include: relacionesDetalle
+			})
+
+
+		const mapDetalles = new Map()
+			for (const det of todosDetalles) {
+				const key = det.id_certificado
+				if (!mapDetalles.has(key)) mapDetalles.set(key, [])
+				mapDetalles.get(key).push(det)
+			}
+
+		const idsRazonSocial = [...new Set(
+				operaciones
+					.filter(op => op.oficina_razon_social != null)
+					.map(op => op.oficina_razon_social.id_razon_social)
+			)]
+			const todasRazonesSociales = idsRazonSocial.length > 0
+				? await db.sequelize.models.razones_sociales.findAll({
+					where: { id: { [db.Sequelize.Op.in]: idsRazonSocial } }
+				})
+				: []
+			const mapRazonesSociales = new Map(todasRazonesSociales.map(rs => [rs.id, rs]))
+
+
+
+			const idsFacturados = operaciones.filter(op => op.estatus === 'F').map(op => op.id)
+			const mapPedidosFactura = new Map()
+			const mapFacturaDetallesPorPedido = new Map()
+			const mapNotasCreditoPorFactura = new Map()
+			const mapFacturas = new Map()
+			const mapCxCPorFactura = new Map()
+
+
+			if (idsFacturados.length > 0) {
+				const pedidosFactura = await db.sequelize.models.pedidos_factura.findAll({
+					where: { id_certificado: { [db.Sequelize.Op.in]: idsFacturados } }
+				})
+				for (const pf of pedidosFactura) mapPedidosFactura.set(pf.id_certificado, pf)
+
+				const idsPedidos = pedidosFactura.map(pf => pf.id)
+				const facturasDetalle = idsPedidos.length > 0
+					? await db.sequelize.models.factura_detalles.findAll({
+						where: { id_pedido_factura: { [db.Sequelize.Op.in]: idsPedidos } }
+					})
+					: []
+				for (const fd of facturasDetalle) {
+					const key = fd.id_pedido_factura
+					if (!mapFacturaDetallesPorPedido.has(key)) mapFacturaDetallesPorPedido.set(key, [])
+					mapFacturaDetallesPorPedido.get(key).push(fd)
+				}
+
+
+				const idsFacturasCandidatas = [...new Set(facturasDetalle.map(fd => fd.id_factura))]
+				const notasCredito = idsFacturasCandidatas.length > 0
+					? await db.sequelize.models.notas_credito.findAll({
+						where: { id_factura: { [db.Sequelize.Op.in]: idsFacturasCandidatas } }
+					})
+					: []
+				for (const nc of notasCredito) mapNotasCreditoPorFactura.set(nc.id_factura, nc)
+
+                if (idsFacturasCandidatas.length > 0) {
+					const findRelacionesFacturas = new Relaciones(
+						[ 'marca', 'razon_social', 'moneda', 'cfdi', 'oficina', 'factura_detalles' ],
+						[ 'marca', 'razon_social', 'moneda', 'cfdi', 'oficina', 'factura_detalles' ],
+						db.sequelize.models
+					)
+					const relacionesFacturas = await findRelacionesFacturas.getRelaciones()
+					const todasFacturas = await db.sequelize.models.facturas.findAll({
+						where: { id: { [db.Sequelize.Op.in]: idsFacturasCandidatas } },
+						include: relacionesFacturas
+					})
+					for (const f of todasFacturas) mapFacturas.set(f.id, f)
+
+					const idsParaCxc = todasFacturas.map(f => f.id)
+					const todosCxC = idsParaCxc.length > 0
+						? await db.sequelize.models.cuentas_por_cobrar.findAll({
+							where: { id_factura: { [db.Sequelize.Op.in]: idsParaCxc } }
+						})
+						: []
+					for (const c of todosCxC) mapCxCPorFactura.set(c.id_factura, c)
+				}
+			}
+
+
+			const idsOficinaCliente = [...new Set(operaciones.map(op => op.oficina_razon_social?.id_oficina).filter(Boolean))]
+			const idsClientes = [...new Set(operaciones.map(op => op.id_cliente).filter(Boolean))]
+
+			const todasOficinasCliente = idsOficinaCliente.length > 0 && idsClientes.length > 0
+				? await db.sequelize.models.oficinas_cliente.findAll({
+					where: {
+						id_oficina: { [db.Sequelize.Op.in]: idsOficinaCliente },
+						id_cliente: { [db.Sequelize.Op.in]: idsClientes }
+					}
+				})
+				: []
+			const mapOficinaCliente = new Map(todasOficinasCliente.map(oc => [`${oc.id_oficina}-${oc.id_cliente}`, oc]))
+
+			const findRelacionesMAO = new Relaciones(['agente_venta_1', 'agente_venta_2'], ['agente_venta_1', 'agente_venta_2'], db.sequelize.models)
+			const relacionesMAO = await findRelacionesMAO.getRelaciones()
+			const idsOficinasClienteEncontradas = [...new Set(todasOficinasCliente.map(oc => oc.id))]
+			const todosMAO = idsOficinasClienteEncontradas.length > 0
+				? await db.sequelize.models.marca_agentes_oficinas.findAll({
+					where: { id_oficina_cliente: { [db.Sequelize.Op.in]: idsOficinasClienteEncontradas } },
+					include: relacionesMAO
+				})
+				: []
+			const mapMAO = new Map(todosMAO.map(m => [`${m.id_oficina_cliente}-${m.id_marca}`, m]))
+
+			const findRelacionesMAC = new Relaciones(['agente_operativo'], ['agente_operativo'], db.sequelize.models)
+			const relacionesMAC = await findRelacionesMAC.getRelaciones()
+			const todosMAC = idsClientes.length > 0
+				? await db.sequelize.models.marca_agentes_clientes.findAll({
+					where: { id_cliente: { [db.Sequelize.Op.in]: idsClientes } },
+					include: relacionesMAC
+				})
+				: []
+			const mapMAC = new Map(todosMAC.map(m => [`${m.id_cliente}-${m.id_marca}`, m]))
+
+			
+			const relacionesHistorico = []
+			const todosHistoricos = ids.length > 0
+				? await db.sequelize.models.historicos.findAll({
+					where: {
+						id_registro: { [db.Sequelize.Op.in]: ids },
+						tabla: db.sequelize.models.certificados.name.toUpperCase()
+					},
+					include: relacionesHistorico,
+					order: [['createdAt', 'DESC']]
+				})
+				: []
+			const mapHistoricoPorRegistro = new Map()
+			for (const h of todosHistoricos) {
+				if (!mapHistoricoPorRegistro.has(h.id_registro)) {
+					mapHistoricoPorRegistro.set(h.id_registro, h) // el primero ya viene ordenado DESC
+				}
+			}
+
+
+			const findRelacionesArchivo = new Relaciones(['archivo', 'usuario_registro'], ['archivo', 'usuario_registro'], db.sequelize.models)
+			const relArchivo = await findRelacionesArchivo.getRelaciones()
+			const todosArchivos = ids.length > 0
+				? await db.sequelize.models.certificados_documentos_operaciones.findAll({
+					where: { id_certificado: { [db.Sequelize.Op.in]: ids } },
+					include: relArchivo
+				})
+				: []
+			const mapArchivos = new Map()
+			for (const a of todosArchivos) {
+				const key = a.id_certificado
+				if (!mapArchivos.has(key)) mapArchivos.set(key, [])
+				mapArchivos.get(key).push(a)
+			}
+
+
+			const todosPedidosFacturaGenerico = ids.length > 0
+				? await db.sequelize.models.pedidos_factura.findAll({
+					where: { id_certificado: { [db.Sequelize.Op.in]: ids } }
+				})
+				: []
+			const mapPedidoFacturaGenerico = new Map(todosPedidosFacturaGenerico.map(pf => [pf.id_certificado, pf]))
+
+
+			for (const operacion of operaciones) {
+				try {
+					const certificadoRc = mapCertificadosRcPorCertificado.get(operacion.id)
+						|| mapCertificadosRcPorCertificadoRc.get(operacion.id)
+					if (certificadoRc) {
+						if (certificadoRc.id_certificado == operacion.id) {
+							operacion.certificado_rc = certificadoRc.certificado_rc
+							operacion.certificado = null
+						} else {
+							operacion.certificado_rc = null
+							operacion.certificado = certificadoRc.certificado
+						}
+					}
+
+					operacion.detalle_certificado = mapDetalles.get(operacion.id) || []
+
+					if (operacion.oficina_razon_social != null) {
+						const idOficina = operacion.oficina_razon_social.id_oficina
+						const razonSocial = mapRazonesSociales.get(operacion.oficina_razon_social.id_razon_social)
+						if (razonSocial != null) {
+							operacion.razon_social = razonSocial
+							operacion.oficina_razon_social = undefined
+						}
+
+						operacion.factura = null
+						operacion.cxc = null
+						operacion.factura_pagada = null
+						if (operacion.estatus === 'F') {
+							const pedidoFactura = mapPedidosFactura.get(operacion.id)
+							if (pedidoFactura) {
+								const facturasDetalle = mapFacturaDetallesPorPedido.get(pedidoFactura.id) || []
+								let facturaDetalle
+								for (const facDetalle of facturasDetalle) {
+									const notaCredito = mapNotasCreditoPorFactura.get(facDetalle.id_factura)
+									if (!notaCredito) facturaDetalle = facDetalle
+								}
+								if (facturaDetalle) {
+									const factura = mapFacturas.get(facturaDetalle.id_factura)
+									if (factura) {
+										operacion.factura = factura
+										const cxc = mapCxCPorFactura.get(factura.id)
+										if (cxc) {
+											operacion.cxc = cxc
+											operacion.factura_pagada = parseFloat(cxc.saldo) == 0
+										}
+									}
+								}
+							}
+						}
+
+						const oficinaCliente = mapOficinaCliente.get(`${idOficina}-${operacion.id_cliente}`)
+						if (oficinaCliente != null) {
+							let marcaAgenteOficina = mapMAO.get(`${oficinaCliente.id}-${operacion.id_marca}`)
+								|| mapMAO.get(`${oficinaCliente.id}-3`)
+							operacion.agente_venta_1 = marcaAgenteOficina ? marcaAgenteOficina.agente_venta_1 : null
+							operacion.agente_venta_2 = marcaAgenteOficina ? marcaAgenteOficina.agente_venta_2 : null
+						}
+					} else {
+						// operación sin oficina_razon_social: se marca para excluir del reporte más adelante
+						operacion.factura = null
+						operacion.cxc = null
+						operacion.factura_pagada = null
+					}
+
+					let marcaAgenteCliente = mapMAC.get(`${operacion.id_cliente}-${operacion.id_marca}`)
+						|| mapMAC.get(`${operacion.id_cliente}-3`)
+					operacion.agente_operativo = marcaAgenteCliente ? marcaAgenteCliente.agente_operativo : null
+
+					const historico = mapHistoricoPorRegistro.get(operacion.id)
+					operacion.usuario_modifico = historico ? historico.usuario_registro : null
+
+					operacion.archivos_operacion = mapArchivos.get(operacion.id) || []
+					operacion.pedido_factura = mapPedidoFacturaGenerico.get(operacion.id) || null
+
+					documentosFiltrados.push(operacion)
+
+
+					} catch (errorRegistro) {
+					// Un registro individual con datos corruptos no debe tumbar todo el reporte.
+					console.error(`Error procesando certificado id=${operacion.id}:`, errorRegistro)
+				}
+			}
+		} else {
+			documentosFiltrados.push(...operaciones)
+		}
+
+
+		const elementos = []
+		let idMarca
+		for (const documento of documentosFiltrados) {
+			try {
+				if (idMarca === undefined) idMarca = documento.id_marca
+				let operacionOk = true
+				if (documento.cliente == null) operacionOk = false
+				if (documento.marca == null || documento.beneficiario == null || documento.proveedor == null || documento.detalle_certificado.length == 0) operacionOk = false
+
+				if (!operacionOk) continue // (antes se saltaba silenciosamente igual, solo lo hacemos explícito)
+
+				const sumaAseguradaMoneda = parseFloat(documento.suma_asegurada)
+				let sumaAseguradaUSD
+				const cobertura = documento.tipo_cobertura.toLowerCase().split(" ")
+				const isRC = cobertura.includes("rc")
+				if (documento.moneda.clave != 'USD' && !isRC) {
+					sumaAseguradaUSD = parseFloat((sumaAseguradaMoneda / parseFloat(documento.tipo_cambio_futuro.tipo_cambio)).toFixed(6))
+				} else {
+					sumaAseguradaUSD = parseFloat(sumaAseguradaMoneda)
+				}
+
+
+				if(req.query.keepro != 0 && operacionOk == true){
+					const elemento = {
+						"Nombre de la póliza": documento.poliza.nombre,
+						"Aseguradora": documento.proveedor.nombre,
+						"Número de póliza": documento.poliza_detalle.no_poliza,
+						"Número de certificado": documento.no_seguridad,
+						"Número de referencia": documento.no_operacion,
+						"Nombre del cliente": documento.cliente.nombre,
+						"Razón social": documento.razon_social.razon_social,
+						"Referencia del solicitante": documento.referencias ?? '',
+						"Nombre del beneficiario": documento.beneficiario.nombre,
+						"Creado por": documento.usuario_registro.nombre,
+						"Modificado por": documento.usuario_modifico  !== undefined && documento.usuario_modifico !== null ? documento.usuario_modifico.nombre : "",
+						"Medio emisión": documento.keepro === 0 ? "Operaciones" : documento.keepro === 1 ? "Autoemisor Web": documento.keepro === 2 ? "Autoemisor App": documento.keepro === 3 ? "Autoemisor Api": "",
+						"Fecha de creación DRAFT": moment(documento.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD'),
+						"Fecha de reserva": documento.certifiedAt != null ? moment(documento.certifiedAt).tz('America/Mexico_City').format('YYYY-MM-DD') : "N/A",
+						"Fecha de salida": moment(documento.fecha_inicio_cobertura).tz('America/Mexico_City').format('YYYY-MM-DD'),
+						"Retroactividad":  moment(moment(documento.fecha_inicio_cobertura).tz('America/Mexico_City').format('YYYY-MM-DD')).tz('America/Mexico_City') < moment(moment(documento.certifiedAt ?? documento.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD')).tz('America/Mexico_City') ? "Si" : "No",
+						"Moneda de suma asegurada": documento.moneda.clave,
+						"Suma asegurada": ManipuladorCadenas.formatMoney(documento.suma_asegurada),
+						"Suma asegurada USD": ManipuladorCadenas.formatMoney(sumaAseguradaUSD),
+						"Tipo de Cambio": ManipuladorCadenas.formatMoney(documento.tipo_cambio_futuro.tipo_cambio),
+						"Tarifa de venta": ManipuladorCadenas.formatTarifa(documento.detalle_certificado[0].tarifa_final_cliente),
+						"Mínimo de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_venta),
+						"Moneda de venta": documento.moneda.clave,
+						"Subtotal de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].subtotal),
+						"Impuesto de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].monto_iva),
+						"Total de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].total),
+						"Tipo de cobertura": documento.tipo_cobertura,
+						"Tipo de contenedor": documento.tipo_contenedor !== null && documento.tipo_contenedor !== undefined ? documento.tipo_contenedor.descripcion : "",
+						"Número de contenedor": documento.num_contenedor !== null && documento.num_contenedor !== undefined ? documento.num_contenedor : "",
+						"Modalidad de transporte":  documento.modalidad_transporte.nombre,
+						"Bienes asegurados": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.descripcion : "",
+						"Categoria de los bienes asegurados": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.categoria.descripcion : "",
+						"Descripción de mercancía": documento.descripcion_carga !== undefined && documento.descripcion_carga !== null ? documento.descripcion_carga : "",
+						"Datos adicionales": documento.datos_adicionales !== undefined && documento.datos_adicionales !== null ? documento.datos_adicionales : "",
+						"País Origen": documento.estado_origen.pais.descripcion,
+						"País Destino": documento.estado_destino.pais.descripcion,
+						"Está facturada": documento.factura != null ? "Si" : "NO",
+						"Factura pagada": documento.cxc !== null && documento.cxc !==  undefined ? parseFloat(documento.cxc.saldo) > 0 ? "No" : "Si" : "N/A",
+					}
+					elementos.push(elemento)
+				} else if(!tipoDocumento && operacionOk == true){
+					const elemento = {
+						"id": documento.id,
+						"Nombre de la póliza": documento.poliza.nombre,
+						"Número de póliza": documento.poliza_detalle.no_poliza,
+						"Número de certificado": documento.no_seguridad,
+						"Referencia del solicitante": documento.referencias ?? '',
+						"Creado por": documento.usuario_registro.nombre,
+						"Modificado por": documento.usuario_registro.nombre,
+						"Número de referencia": documento.no_operacion,
+						"Fecha de reserva": moment(documento.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD'),
+						"Fecha de salida": moment(documento.fecha_inicio_cobertura).tz('America/Mexico_City').format('YYYY-MM-DD'),
+						"Retroactividad":  moment(moment(documento.fecha_inicio_cobertura).tz('America/Mexico_City').format('YYYY-MM-DD')).tz('America/Mexico_City') < moment(moment(documento.certifiedAt ?? documento.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD')).tz('America/Mexico_City') ? "Si" : "No",
+						"Tipo de Cambio": ManipuladorCadenas.formatMoney(documento.tipo_cambio_futuro.tipo_cambio),
+						"Subtotal de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].subtotal),
+						"Moneda de venta": documento.moneda.clave,
+						"Impuesto de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].monto_iva),
+						"Total de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].total),
+						"Suma asegurada": ManipuladorCadenas.formatMoney(documento.suma_asegurada),
+						"Tarifa de venta": ManipuladorCadenas.formatTarifa(documento.detalle_certificado[0].tarifa_final_cliente),
+						"Mínimo de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_venta),
+						"Tipo de cobertura": documento.tipo_cobertura,
+						"Descripción de seguro": documento.detalle_certificado[0].atributo.descripcion,
+						"Tipo de contenedor": documento.tipo_contenedor !== null && documento.tipo_contenedor !== undefined ? documento.tipo_contenedor.descripcion : "",
+						"Tamaño de contenedor": documento.tamanio_contenedor !== null && documento.tamanio_contenedor !== undefined ? documento.tamanio_contenedor.descripcion : "",
+						"Nombre del asegurado": documento.beneficiario.nombre,
+						"Asegurado principal": documento.marca.nombre,
+						"Tarifa de compra": ManipuladorCadenas.formatTarifa(documento.detalle_certificado[0].tarifa_compra),
+						"Minimo de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_compra),
+						"Moneda de Compra": documento.moneda.clave,
+						"Subtotal de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].costo_compra),
+						"Impuesto de compra": documento.proveedor.id_nacionalidad == 96 ? ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : ManipuladorCadenas.formatMoney(0),
+						"Total de compra": ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) + (documento.proveedor.id_nacionalidad == 96 ? (parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : 0)) ,
+						"Modalidad de transporte":  documento.modalidad_transporte.nombre,
+						"Bien asegurado": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.descripcion : "",
+						"Categoria del bien asegurado": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.categoria.descripcion : "",
+						"Aseguradora": documento.proveedor.nombre,
+						"Descripción de mercancía": documento.descripcion_carga !== undefined && documento.descripcion_carga !== null ? documento.descripcion_carga : "",
+						"Datos adicionales": documento.datos_adicionales !== undefined && documento.datos_adicionales !== null ? documento.datos_adicionales : "",
+						"Medio emisión": documento.keepro === 0 ? "Operaciones" : documento.keepro === 1 ? "Autoemisor Web": documento.keepro === 2 ? "Autoemisor App": documento.keepro === 3 ? "Autoemisor Api": "",
+						"País origen": documento.estado_origen.pais.descripcion,
+						"País Destino": documento.estado_destino.pais.descripcion,
+						"Agente de ventas 1": documento.agente_venta_1 !== null && documento.agente_venta_1 !== undefined ? documento.agente_venta_1.nombre : "",
+						"Agente de ventas 2": documento.agente_venta_2 !== null && documento.agente_venta_2 !== undefined ? documento.agente_venta_2.nombre : "",
+						"Agente de operaciones": documento.agente_operativo !== null && documento.agente_operativo !== undefined ? documento.agente_operativo.nombre : "",
+						"Clave cliente": documento.cliente.id,
+						"Nombre del cliente": documento.cliente.nombre,
+						"Razón social": documento.razon_social.razon_social,
+						"Subtotal de sobreventa": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].subtotal_sobreventa),
+						"Profit": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].profit)
+					}
+					elementos.push(elemento)
+				}else if(documento.detalle_certificado.length > 0 && operacionOk == true){
+					const nombreProveedor = await ManipuladorCadenas.quitarAcentos(documento.proveedor.nombre.toLowerCase());
+					const nombreProveedorList = nombreProveedor.split(" ")
+					const canMonitoreoActivo = nombreProveedorList.includes('chubb') && !nombreProveedorList.includes('panama') && sumaAseguradaUSDINT >= 200000
+					const elemento = {
+						"id": documento.id,
+						"Nombre de la póliza": documento.poliza.nombre,
+						"Aseguradora": documento.proveedor.nombre,
+						"Número de póliza": documento.poliza_detalle.no_poliza,
+						"Número de certificado": documento.no_seguridad,
+						"Número de referencia": documento.no_operacion,
+						"Nombre del cliente": documento.cliente.nombre,
+						"Razón social": documento.razon_social.razon_social,
+						"Nombre del beneficiario": documento.beneficiario.nombre,
+						"Agente de ventas I": documento.agente_venta_1 !== null && documento.agente_venta_1 !== undefined ? documento.agente_venta_1.nombre : "",
+						"Agente de ventas II": documento.agente_venta_2 !== null && documento.agente_venta_2 !== undefined ? documento.agente_venta_2.nombre : "",
+						"Agente de operaciones": documento.agente_operativo !== null && documento.agente_operativo !== undefined ? documento.agente_operativo.nombre : "",
+						"Creado por": documento.usuario_registro.nombre,
+						"Modificado por": documento.usuario_modifico  !== undefined && documento.usuario_modifico !== null ? documento.usuario_modifico.nombre : "",
+						"Medio emisión": documento.keepro === 0 ? "Operaciones" : documento.keepro === 1 ? "Autoemisor Web": documento.keepro === 2 ? "Autoemisor App": documento.keepro === 3 ? "Autoemisor Api": "",
+						"Fecha de creación DRAFT": moment(documento.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD'),
+						"Fecha de creación CERTIFICADO": documento.certifiedAt != null ? moment(documento.certifiedAt).tz('America/Mexico_City').format('YYYY-MM-DD') : "N/A",
+						"Fecha de salida": moment(documento.fecha_inicio_cobertura).tz('America/Mexico_City').format('YYYY-MM-DD'),
+						"Retroactividad":  moment(moment(documento.fecha_inicio_cobertura).tz('America/Mexico_City').format('YYYY-MM-DD')).tz('America/Mexico_City') < moment(moment(documento.certifiedAt ?? documento.createdAt).tz('America/Mexico_City').format('YYYY-MM-DD')).tz('America/Mexico_City') ? "Si" : "No",
+						"Moneda de suma asegurada": documento.moneda.clave,
+						"Suma asegurada": ManipuladorCadenas.formatMoney(documento.suma_asegurada),
+						"Suma asegurada USD": ManipuladorCadenas.formatMoney(sumaAseguradaUSD),
+						"Tipo de Cambio": ManipuladorCadenas.formatMoney(documento.tipo_cambio_futuro.tipo_cambio),
+						"Tarifa de venta": ManipuladorCadenas.formatTarifa(documento.detalle_certificado[0].tarifa_final_cliente),
+						"Mínimo de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_venta),
+						"Moneda de venta": documento.moneda.clave,
+						"Subtotal de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].subtotal),
+						"Impuesto de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].monto_iva),
+						"Total de venta": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].total),
+						"Tarifa de compra": ManipuladorCadenas.formatTarifa(documento.detalle_certificado[0].tarifa_compra),
+						"Minimo de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].minimo_compra),
+						"Moneda de Compra": documento.moneda.clave,
+						"Subtotal de compra": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].costo_compra),
+						"Impuesto de compra": documento.proveedor.id_nacionalidad == 96 ? ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : ManipuladorCadenas.formatMoney(0),
+						"Total de compra": ManipuladorCadenas.formatMoney(parseFloat(documento.detalle_certificado[0].costo_compra) + (documento.proveedor.id_nacionalidad == 96 ? (parseFloat(documento.detalle_certificado[0].costo_compra) * 0.16) : 0)) ,
+						"Subtotal de sobreventa": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].subtotal_sobreventa),
+						"Moneda de Profit": documento.moneda.clave,
+						"Profit": ManipuladorCadenas.formatMoney(documento.detalle_certificado[0].profit),
+						"Tipo de cobertura": documento.tipo_cobertura,
+						"Descripción de seguro": documento.detalle_certificado[0].atributo.descripcion,
+						"Tipo de contenedor": documento.tipo_contenedor !== null && documento.tipo_contenedor !== undefined ? documento.tipo_contenedor.descripcion : "",
+						"Número de contenedor": documento.num_contenedor !== null && documento.num_contenedor !== undefined ? documento.num_contenedor : "",
+						"Modalidad de transporte":  documento.modalidad_transporte.nombre,
+						"Bienes asegurados": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.descripcion : "",
+						"Categoria de los bienes asegurados": documento.commoditie !== null && documento.commoditie !== undefined ? documento.commoditie.categoria.descripcion : "",
+						"Descripción de mercancía": documento.descripcion_carga !== undefined && documento.descripcion_carga !== null ? documento.descripcion_carga : "",
+						"Datos adicionales": documento.datos_adicionales !== undefined && documento.datos_adicionales !== null ? documento.datos_adicionales : "",
+						"País Origen": documento.estado_origen.pais.descripcion,
+						"País Destino": documento.estado_destino.pais.descripcion,
+						"Está facturada": documento.factura != null ? "Si" : "NO",
+						"Factura pagada": documento.cxc !== null && documento.cxc !==  undefined ? parseFloat(documento.cxc.saldo) > 0 ? "No" : "Si" : "N/A",
+					}
+					elementos.push(elemento)
+				}
+
+			} catch (errorElemento) {
+				console.error(`Error armando fila de exportación para certificado id=${documento?.id}:`, errorElemento)
+			}
+		}
+
+		if (elementos.length < 1) {
+			return res.status(400).json({ success: false, error: 'Sin registros' })
+		}
+
+		res.status(200).send({ status: true, msg: "Se enviará el reporte a su correo electrónico." })
+
+
+		const nombreReporte = `${tipoDocumento !== null && tipoDocumento !== undefined ? (tipoDocumento == true ? "cetificados" : "draft") : "operaciones"}_${moment().tz('America/Mexico_City').format('YYYY-MM-DD')}`
+		const namesSheets = [db.sequelize.models.certificados.name]
+		const reporteCertificados = new ReportesXLSX({
+			nombreReporte: nombreReporte,
+			elementos: elementos,
+			namesSheets: namesSheets,
+			idMarca: idMarca
+		})
+
+		return await reporteCertificados.gerReporteOneSheet(res, req, retornar)
+
 		
+
+
+		/*
 		const documentosFiltrados = []
 		for(const registro of docs){
 			if(true){
@@ -3320,9 +3805,27 @@ async function ejecutarReporte(res,req,relaciones,filtro,relacionesRc,tipoDocume
 		})
 
 		return await reporteCertificados.gerReporteOneSheet(res,req,retornar)
+
+
+
+
 	} catch (error) {
 	}
+}*/
+
+
+} catch (error) {
+		
+	
+	console.error('Error en ejecutarReporte:', error)
+		if (!res.headersSent) {
+			return res.status(500).json({ success: false, error: 'Error interno del servidor', error: error.toString() })
+		}
+	}
 }
+
+
+
 
 
 async function getFiltroExportacion(parametros){
