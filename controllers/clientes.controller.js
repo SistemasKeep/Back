@@ -355,7 +355,7 @@ async function store(req, res){
 
 				if(coincidenciaExacta == true){
 					nuevoRegistro = entidadValidada.coincidencias.matches;
-					return res.status(200).send({ status: true, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: nuevoRegistro});
+					return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: nuevoRegistro});
 				}	
 			}
 
@@ -680,7 +680,7 @@ async function update(req, res){
 
 				if(coincidenciaExacta == true){
 					const coincidencias = entidadValidada.coincidencias.matches;
-					return res.status(200).send({ status: true, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
+					return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
 				}	
 			}
 
@@ -1296,7 +1296,7 @@ async function createProspectoCliente(req, res) {
 						nuevoCliente = entidadValidada.coincidencias.matches;
 						info.subject = "Error en la Creación de Prospecto";
 						sendMail('creacion_prospecto_no_exitosa',[{nombre:'nombreCliente',contenido: nombreCompleto }, {nombre:'detallesError', contenido:"Se han encontrado coincidencias en la lista de sanciones de la OFAC"}],info);
-						return res.status(200).send({ status: true, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC"});
+						return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC"});
 					}	
 				}
 			}

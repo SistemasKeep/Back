@@ -236,7 +236,7 @@ async function store(req, res){
 		if(entidadValidada.success){
 			if(entidadValidada.coincidencias.matches[name].length > 0){
 				const coincidencias = entidadValidada.coincidencias.matches;
-				return res.status(200).send({ status: true, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
+				return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
 			}else{
 				const nuevoRegistro = await db.sequelize.models.proveedores.create(registro);
 				const documentosProveedor = await db.sequelize.models.proveedores_documentos_generales.findAll()

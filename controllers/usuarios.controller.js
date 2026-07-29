@@ -1190,7 +1190,7 @@ async function storeOpen(req, res){
 
 				if(coincidenciaExacta == true){
 					cliente = entidadValidada.coincidencias.matches;
-					return res.status(200).send({ status: true, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: cliente});
+					return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: cliente});
 				}	
 			}
 			cliente = await db.sequelize.models.clientes.create(payloadCliente);
