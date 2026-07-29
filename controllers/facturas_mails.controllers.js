@@ -160,7 +160,7 @@ async function sendMailFacturaLocal(idFactura, usuario, listEmails = []){
         }
     }
     htmlContent = await remplaceDataCertificado({nombreCliente:nombreCliente,mensajeOperacion:mensajeOperacion,tablaReferencia:tablaReferencia,mensajeSL:mensajeSL},tpl)
-    const asunto = `Envío de Factura electrónica // ${noOperacion}${referencia}`
+    const asunto = `Envío de Factura electrónica${factura.factura_detalles.length == 0 ? ` // ${factura.folio} ` : ""} // ${noOperacion}${referencia}`
     const emails = []
     if(usuario.envio_automatico && isAutoemisor){
         emails.push(usuario.email)
