@@ -13,9 +13,9 @@ async function validarEntidad(datosEntidad){
     if(validOfac){
         const data = {
             'apiKey': process.env.OFAC_KEY_PRODUCTION,
-            'minScore': 95,
+            'minScore': 85,
             //si se utilizan las claves de desarrollo, se debe comentar PEP, ya que no es permitido
-            'source':['SDN', 'NONSDN', 'PEP', 'DPL', 'UN', 'UK', 'EU', 'DFAT'],
+            'source':['SDN', 'NONSDN', 'DPL', 'UN', 'UK', 'EU', 'DFAT'],
             'cases': [{
                 'name': datosEntidad.nombre,
                 'citizenship': datosEntidad.pais,
