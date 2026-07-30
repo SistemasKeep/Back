@@ -111,7 +111,7 @@ async function store(req, res){
 			return res.status(400).send(nuevoRegistro);
 		}
 		if(nuevoRegistro.hasOwnProperty(name)){
-			return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", coincidencias: nuevoRegistro});
+			return res.status(400).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", coincidencias: nuevoRegistro});
 		}else{
 			return res.status(200).send({ status: true, msg: "Elemento registrado correctamente", data: {id:nuevoRegistro.id}});
 		}
@@ -363,7 +363,7 @@ async function update(req, res){
 	
 		if(registroAEditar !== undefined){
 			if(registroAEditar.hasOwnProperty(name)){
-				return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", coincidencias: registroAEditar});
+				return res.status(400).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", coincidencias: registroAEditar});
 			}else{
 				return res.status(200).send({ status: true, msg: "Registro editado con éxito"});
 			}

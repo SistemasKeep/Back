@@ -317,7 +317,7 @@ async function store(req, res){
 				}
 				if(coincidenciaExacta == true){
 					const coincidencias = entidadValidada.coincidencias.matches;
-					return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
+					return res.status(400).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
 				}	
 			}
 
@@ -573,7 +573,7 @@ async function update(req, res){
 		
 						if(coincidenciaExacta == true){
 							const coincidencias = entidadValidada.coincidencias.matches;
-							return res.status(200).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
+							return res.status(400).send({ status: false, msg: "Se han encontrado coincidencias en la lista de sanciones de la OFAC", data: coincidencias});
 						}	
 					}
 				}
