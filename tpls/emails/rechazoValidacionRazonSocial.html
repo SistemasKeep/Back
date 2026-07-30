@@ -5,26 +5,22 @@
     </head>
     <title>Rechazo de salidación de nuevo cliente</title>
     <body>
-        <p> Buen día, </p>
-
-        Por medio del presente hago mención que el alta solicitada del cliente
-        "{{$nombreCliente}}" ha sido rechazada debido a información faltante o incompleta, favor de revisar nuevamente.
-        <br> <br>
-
-        Razón social: <strong>{{$razonSocial}}</strong>
-        <br> <br>
-
-        Comentarios:
+        <p> Estimados, </p>
         <br>
-        {{$comentarios}}
+        Después de realizar la revisión del expediente del siguiente cliente, se identificaron observaciones que impiden concluir favorablemente el proceso de validación:
         <br> <br>
-
-        Rechazado a:
+        Código del cliente: <strong>{{$codigoCliente}}</strong> <br>
+        Nombre del cliente: <strong>{{$nombreCliente}}</strong> <br>
+        Razón social: <strong>{{$razonSocial}}</strong> <br>
+        Marca: <strong>{{$marca}}</strong> <br>
+        Estatus: RECHAZADO <br>
+        Observaciones: <strong>{{$comentarios}}</strong> <br>
         <br>
-        {{$usuarioSolicita}}
+        Solicitamos su amable apoyo para realizar las correcciones correspondientes y enviar nuevamente la solicitud de validación para una nueva revisión.
         <br> <br>
-
-        Quedo al pendiente,
+        Una vez recibida la información corregida, se procederá con la validación del expediente.
+        <br> <br>
+        Quedamos atentos a cualquier duda o comentario.
         <br> <br>
         
         <strong>¡SALUDOS CORDIALES!</strong>

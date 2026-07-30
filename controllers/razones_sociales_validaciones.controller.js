@@ -478,146 +478,148 @@ async function restaurar(req,res){
 }
 
 async function rechazarRazonSocial(req,res){
-    const parametros = req.body;
-
-    //se obtiene el cliente
-    const idCliente = await db.sequelize.models.clientes_razones_sociales.findOne({
-        where: {
-            id_razon_social: parametros.idRazonSocial,
-            deletedAt: null
-        }
-    });
-    if(idCliente == null){
-        return res.status(500).send({ status: false, msg: "No se encontró un cliente para esa razón social"});
-    }
-    const cliente = await db.sequelize.models.clientes.findOne({
-        where: {
-            id: idCliente.id_cliente,
-            deletedAt: null
-        }
-    });
-
-    //obtiene la razón social
-    const razonSocial = await db.sequelize.models.razones_sociales.findOne({
-        where: {
-            id: parametros.idRazonSocial,
-            deletedAt: null
-        }
-    });
-    if(razonSocial == null){
-        return res.status(500).send({ status: false, msg: "No se encontró una razón socual para ese cliente"});
-    }
-
-    //obtiene los agentes del cliente
-    const agentes = await db.sequelize.models.marca_agentes_clientes.findOne({
-        where: {
-            id_cliente: cliente.id,
-            id_marca: parametros.idMarca,
-            deletedAt: null
-        }
-    });
-    if(agentes == null){
-        return res.status(500).send({ status: false, msg: "No se encontraron agentes registrados para ese cliente con esa marca"});
-    }
-
-    //obtiene los correos de los agentes de ventas del cliente
-    let correoAgente;
-    let destinatarios = [];
-
-    if(agentes.id_agente_venta_1 != null){
-        correoAgente = await db.sequelize.models.usuarios.findOne({
-            where: {
-                id: agentes.id_agente_venta_1,
-                deletedAt: null
-            }
-        });
-
-        if(correoAgente != null){
-            destinatarios.push(correoAgente.email);
-        }
-    }
-
-    if(agentes.id_agente_venta_2 != null){
-        correoAgente = await db.sequelize.models.usuarios.findOne({
-            where: {
-                id: agentes.id_agente_venta_2,
-                deletedAt: null
-            }
-        });
-
-        if(correoAgente != null){
-            destinatarios.push(correoAgente.email);
-        }
-    }
-
-    if(destinatarios == []){
-        return res.status(500).send({ status: false, msg: "No se encontraron direcciones de correo de los agentes de venta"});
-    }
-
-    //obtiene el correo del usuario que solicita la validacion
-    const usuarioSolicita = await db.sequelize.models.usuarios.findOne({
-        where: {
-            id: parametros.idUsuarioSolicita,
-            deletedAt: null
-        }
-    });
-
-    destinatarios.push(usuarioSolicita.email);
-
-    //agrega a los usuarios con rol de supervisor de cxc
-    const rolesUsuarios = await db.sequelize.models.roles_usuarios.findAll({
-        where: {
-            id_role: 24,
-            deletedAt: null
-        },
-        include: ['usuario']
-    });
-
-    if(rolesUsuarios != null){
-        for (let i = 0; i < rolesUsuarios.length; i++) {
-            const rolUsr = rolesUsuarios[i];
-            if(rolUsr.usuario == null) continue;
-            destinatarios.push(rolUsr.usuario.email);
-        }
-    }
-
-    //agrega el correo de la persona que RECHAZA la razón social
-    destinatarios.push(req.usuario.email);
-
-    //guarda el comentario de rechazo de la razón social
-    const rsValidacion = await db.sequelize.models.razones_sociales_validaciones.findOne({
-        where:{
-            id_razon_social: parametros.idRazonSocial,
-            id_marca: parametros.idMarca,
-            deletedAt: null
-        }
-    });
-    rsValidacion.comentarios = parametros.comentarios != null ? parametros.comentarios : '';
-    rsValidacion.updatedAt = moment().tz('America/Mexico_City');
-    await rsValidacion.save();
-
-    //genera el cuerpo del correo
-    let rutaArchivoHTML = path.join(__dirname, '..', 'tpls/emails', `rechazoValidacionRazonSocial.html`);
-    var htmlContent = await fs.readFile(rutaArchivoHTML, 'utf8');
-    const data = [
-        {nombre:'nombreCliente', contenido: cliente.nombre},
-        {nombre:'razonSocial', contenido: razonSocial.razon_social},
-        {nombre:'comentarios', contenido: parametros.comentarios},
-        {nombre:'usuarioSolicita', contenido: usuarioSolicita.nombre}
-    ];
-    for (let i = 0; i < data.length; i++) {
-		const campo = data[i];
-		htmlContent = htmlContent.replace(new RegExp(`\\{\\{\\$${campo.nombre}\\}\\}`, 'g'), campo.contenido);
-	}
-
     //Envía el correo
     try {
+        const parametros = req.body;
+
+        //se obtiene el cliente
+        const idCliente = await db.sequelize.models.clientes_razones_sociales.findOne({
+            where: {
+                id_razon_social: parametros.idRazonSocial,
+                deletedAt: null
+            }
+        });
+        if(idCliente == null){
+            return res.status(500).send({ status: false, msg: "No se encontró un cliente para esa razón social"});
+        }
+        const cliente = await db.sequelize.models.clientes.findOne({
+            where: {
+                id: idCliente.id_cliente,
+                deletedAt: null
+            }
+        });
+
+        //obtiene la razón social
+        const razonSocial = await db.sequelize.models.razones_sociales.findOne({
+            where: {
+                id: parametros.idRazonSocial,
+                deletedAt: null
+            }
+        });
+        if(razonSocial == null){
+            return res.status(500).send({ status: false, msg: "No se encontró una razón socual para ese cliente"});
+        }
+
+        //obtiene los agentes del cliente
+        const agentes = await db.sequelize.models.marca_agentes_clientes.findOne({
+            where: {
+                id_cliente: cliente.id,
+                id_marca: parametros.idMarca,
+                deletedAt: null
+            }
+        });
+        if(agentes == null){
+            return res.status(500).send({ status: false, msg: "No se encontraron agentes registrados para ese cliente con esa marca"});
+        }
+
+        //obtiene los correos de los agentes de ventas del cliente
+        let correoAgente;
+        let destinatarios = [];
+
+        if(agentes.id_agente_venta_1 != null){
+            correoAgente = await db.sequelize.models.usuarios.findOne({
+                where: {
+                    id: agentes.id_agente_venta_1,
+                    deletedAt: null
+                }
+            });
+
+            if(correoAgente != null){
+                destinatarios.push(correoAgente.email);
+            }
+        }
+
+        if(agentes.id_agente_venta_2 != null){
+            correoAgente = await db.sequelize.models.usuarios.findOne({
+                where: {
+                    id: agentes.id_agente_venta_2,
+                    deletedAt: null
+                }
+            });
+
+            if(correoAgente != null){
+                destinatarios.push(correoAgente.email);
+            }
+        }
+
+        if(destinatarios == []){
+            return res.status(500).send({ status: false, msg: "No se encontraron direcciones de correo de los agentes de venta"});
+        }
+
+        //obtiene el correo del usuario que solicita la validacion
+        const usuarioSolicita = await db.sequelize.models.usuarios.findOne({
+            where: {
+                id: parametros.idUsuarioSolicita,
+                deletedAt: null
+            }
+        });
+
+        destinatarios.push(usuarioSolicita.email);
+
+        //agrega a los usuarios con rol de supervisor de cxc
+        const rolesUsuarios = await db.sequelize.models.roles_usuarios.findAll({
+            where: {
+                id_role: 24,
+                deletedAt: null
+            },
+            include: ['usuario']
+        });
+
+        if(rolesUsuarios != null){
+            for (let i = 0; i < rolesUsuarios.length; i++) {
+                const rolUsr = rolesUsuarios[i];
+                if(rolUsr.usuario == null) continue;
+                destinatarios.push(rolUsr.usuario.email);
+            }
+        }
+
+        //agrega el correo de la persona que RECHAZA la razón social
+        destinatarios.push(req.usuario.email);
+
+        //guarda el comentario de rechazo de la razón social
+        const rsValidacion = await db.sequelize.models.razones_sociales_validaciones.findOne({
+            where:{
+                id_razon_social: parametros.idRazonSocial,
+                id_marca: parametros.idMarca,
+                deletedAt: null
+            }
+        });
+        rsValidacion.comentarios = parametros.comentarios != null ? parametros.comentarios : '';
+        rsValidacion.updatedAt = moment().tz('America/Mexico_City');
+        await rsValidacion.save();
+
+        //genera el cuerpo del correo
+        let rutaArchivoHTML = path.join(__dirname, '..', 'tpls/emails', `rechazoValidacionRazonSocial.html`);
+        var htmlContent = await fs.readFile(rutaArchivoHTML, 'utf8');
+        const marca = await db.sequelize.models.marcas.findByPk(parametros.idMarca);
+        const data = [
+            {nombre:'codigoCliente', contenido: cliente.id},
+            {nombre:'nombreCliente', contenido: cliente.nombre},
+            {nombre:'razonSocial', contenido: razonSocial.razon_social},
+            {nombre:'marca', contenido: marca?.nombre ?? ""},
+            {nombre:'comentarios', contenido: parametros.comentarios},
+            {nombre:'usuarioSolicita', contenido: usuarioSolicita.nombre}
+        ];
+        for (let i = 0; i < data.length; i++) {
+            const campo = data[i];
+            htmlContent = htmlContent.replace(new RegExp(`\\{\\{\\$${campo.nombre}\\}\\}`, 'g'), campo.contenido);
+        }
         let mailOptions = {
             to: destinatarios,
             subject: 'Keepro | Alta de Cliente Rechazada',
             html: htmlContent,
         };
-        const mainSender = new MailController(null, null, mailOptions, null);
+        const mainSender = new MailController(null, marca?.id ?? null, mailOptions, null, true, true);
         await mainSender.sendMail();
     } catch (error) {
         return res.status(500).send({ status: false, msg: "Hubo un error enviando los correos", error: error});
