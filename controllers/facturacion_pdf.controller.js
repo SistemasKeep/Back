@@ -530,9 +530,10 @@ async function getQr(xml, cadena_original) {
   const fe = sello.slice(-8);
   const uuid = xml["cfdi:Comprobante"]["cfdi:Complemento"][0]["tfd:TimbreFiscalDigital"][0]["\$"]['UUID'];
   const cadenaOriginal = cadena_original.split('|');
-  const tt = cadenaOriginal[13];
+  //const tt = cadenaOriginal[13];
+  const total = xml["cfdi:Comprobante"]["$"]["Total"];
+  const tt = Number(total).toFixed(6);
   const qrUrl = `https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=${uuid}&re=${re}&rr=${rr}&tt=${tt}&fe=${fe}`;
-  
   return QRCode.toString(qrUrl, { type: 'svg' })
       .then(qr => {
           let qrAux = qr.replace('<?xml version="1.0" encoding="UTF-8"?>\n', '');
