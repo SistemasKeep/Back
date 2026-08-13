@@ -72,10 +72,19 @@ async function index(req, res) {
 				]
 			}
 			const findRelaciones = new Relaciones(parametrosRelaciones[req.query.perfil],parametrosRelaciones[req.query.perfil],db.sequelize.models)
-			relaciones = await findRelaciones.getRelaciones()
-			const rel = ['certificado_rc.detalle_certificado','certificado.detalle_certificado']
+		
+                 	relaciones = await findRelaciones.getRelaciones()
+		
+//SE RETIRA PARTE DE LA RC
+/*
+
+	const rel = ['certificado_rc.detalle_certificado','certificado.detalle_certificado']
 			const findRelacionesRC = new Relaciones(rel,rel,db.sequelize.models)
 			relacionesRc = await findRelacionesRC.getRelaciones()
+*/
+
+//SE RETIRA PARTE DE LA RC
+//}
 		}
 
 		const docs = await db.sequelize.models.certificados.findAll({
@@ -102,11 +111,148 @@ async function index(req, res) {
 		const fullUrl = req.query.keepro !== 3 ? `${req.protocol}://${req.get('host')}/api/keepro/certificados` : `${req.protocol}://${req.get('host')}/api/KeeproOpen/operaciones`;
 		const nextPageUrl = nextPage ? `${fullUrl}?page=${nextPage}&pageSize=${pageSize}&orden=${orden}` + ((req.query.filter != '' && req.query.filter != undefined) ? `&filter=${req.query.filter}`:'') : null;
 		const prevPageUrl = prevPage ? `${fullUrl}?page=${prevPage}&pageSize=${pageSize}&orden=${orden}` + ((req.query.filter != '' && req.query.filter != undefined) ? `&filter=${req.query.filter}`:'') : null;
+
 		const documentosFiltrados = []
+
+
+//SE AGREGA ESTE CODIGO PARA AGILIZAR LA CONSULTA
+
+
+const idsPagina = docs.map(d => d.id);
+
+const pedidosFactura = await db.sequelize.models.pedidos_factura.findAll({
+        where: { id_certificado: { [db.Sequelize.Op.in]: idsPagina } }
+});
+const mapPedidoFacturaPorCertificado = new Map(pedidosFactura.map(p => [p.id_certificado, p]));
+
+const idsPedidos = pedidosFactura.map(p => p.id);
+const facturaDetalles = idsPedidos.length ? await db.sequelize.models.factura_detalles.findAll({
+        where: { id_pedido_factura: { [db.Sequelize.Op.in]: idsPedidos } }
+}) : [];
+
+const idsFacturasCandidatas = facturaDetalles.map(fd => fd.id_factura);
+const notasCredito = idsFacturasCandidatas.length ? await db.sequelize.models.notas_credito.findAll({
+        where: { id_factura: { [db.Sequelize.Op.in]: idsFacturasCandidatas } }
+}) : [];
+const idsFacturasConNota = new Set(notasCredito.map(nc => nc.id_factura));
+
+const mapFacturaDetallePorPedido = new Map();
+for (const fd of facturaDetalles) {
+        if (!idsFacturasConNota.has(fd.id_factura)) {
+                mapFacturaDetallePorPedido.set(fd.id_pedido_factura, fd);
+        }
+}
+
+const idsFacturasFinal = [...mapFacturaDetallePorPedido.values()].map(fd => fd.id_factura);
+const findRelacionesFacturas = new Relaciones([ 'marca', 'razon_social', 'moneda', 'cfdi', 'oficina', 'factura_detalles' ],[ 'marca', 'razon_social', 'moneda', 'cfdi', 'oficina', 'factura_detalles' ], db.sequelize.models);
+const relacionesFacturas = await findRelacionesFacturas.getRelaciones();
+const facturasCargadas = idsFacturasFinal.length ? await db.sequelize.models.facturas.findAll({
+        where: { id: { [db.Sequelize.Op.in]: idsFacturasFinal } },
+        include: relacionesFacturas
+}) : [];
+const mapFacturaPorId = new Map(facturasCargadas.map(f => [f.id, f]));
+
+const findRelacionesCxC = new Relaciones([],[],db.sequelize.models);
+const relacionesCxC = await findRelacionesCxC.getRelaciones();
+const cxcCargadas = idsFacturasFinal.length ? await db.sequelize.models.cuentas_por_cobrar.findAll({
+        where: { id_factura: { [db.Sequelize.Op.in]: idsFacturasFinal } },
+        include: relacionesCxC
+}) : [];
+const mapCxCPorFactura = new Map(cxcCargadas.map(c => [c.id_factura, c]));
+
+const idsOficinas = [...new Set(docs.map(d => d.oficina_razon_social.id_oficina))];
+const idsClientes = [...new Set(docs.map(d => d.id_cliente))];
+
+const oficinasCliente = await db.sequelize.models.oficinas_cliente.findAll({
+        where: {
+                id_oficina: { [db.Sequelize.Op.in]: idsOficinas },
+                id_cliente: { [db.Sequelize.Op.in]: idsClientes }
+        }
+});
+const mapOficinaCliente = new Map(oficinasCliente.map(oc => [`${oc.id_oficina}_${oc.id_cliente}`, oc]));
+
+const idsOficinaClienteIds = oficinasCliente.map(oc => oc.id);
+const idsMarcas = [...new Set(docs.map(d => d.id_marca))];
+
+const findRelacionesMAO = new Relaciones(['agente_venta_1', 'agente_venta_2'],['agente_venta_1', 'agente_venta_2'],db.sequelize.models);
+const relacionesMAO = await findRelacionesMAO.getRelaciones();
+const marcaAgentesOficinas = idsOficinaClienteIds.length ? await db.sequelize.models.marca_agentes_oficinas.findAll({
+        where: {
+                id_oficina_cliente: { [db.Sequelize.Op.in]: idsOficinaClienteIds },
+                id_marca: { [db.Sequelize.Op.in]: idsMarcas }
+        },
+        include: relacionesMAO
+}) : [];
+const mapMarcaAgenteOficina = new Map(marcaAgentesOficinas.map(m => [`${m.id_oficina_cliente}_${m.id_marca}`, m]));
+
+const findRelacionesMAC = new Relaciones(['agente_operativo'],['agente_operativo'],db.sequelize.models);
+const relacionesMAC = await findRelacionesMAC.getRelaciones();
+const marcaAgentesClientes = await db.sequelize.models.marca_agentes_clientes.findAll({
+        where: {
+                id_cliente: { [db.Sequelize.Op.in]: idsClientes },
+                id_marca: { [db.Sequelize.Op.in]: idsMarcas }
+        },
+        include: relacionesMAC
+});
+const mapMarcaAgenteCliente = new Map(marcaAgentesClientes.map(m => [`${m.id_cliente}_${m.id_marca}`, m]));
+
+
+
+
+// Histórico (solo el más reciente por certificadO  PARA AGILIZAR
+const findRelacionesHistorico = new Relaciones([],[],db.sequelize.models)
+const relacionesHistorico = await findRelacionesHistorico.getRelaciones()
+const historicosPagina = await db.sequelize.models.historicos.findAll({
+        where: {
+                id_registro: { [db.Sequelize.Op.in]: idsPagina },
+                tabla: db.sequelize.models.certificados.name.toUpperCase()
+        },
+        include: relacionesHistorico,
+        order: [['createdAt','DESC']]
+});
+const mapUltimoHistoricoPorRegistro = new Map();
+for (const h of historicosPagina) {
+        if (!mapUltimoHistoricoPorRegistro.has(h.id_registro)) {
+                mapUltimoHistoricoPorRegistro.set(h.id_registro, h);
+        }
+}
+//HASTA AQUI
+
+
+// --- Detalle certificado ---
+const parametrosDetalles = [ 'atributo' ]
+const findRelacionesDetalle = new Relaciones(parametrosDetalles,parametrosDetalles,db.sequelize.models)
+const relacionesDetalle = await findRelacionesDetalle.getRelaciones()
+const detallesCertificados = await db.sequelize.models.detalle_certificados.findAll({
+        where: { id_certificado: { [db.Sequelize.Op.in]: idsPagina } },
+        include: relacionesDetalle
+})
+const mapDetalleCertificadoPorId = new Map(detallesCertificados.map(d => [d.id_certificado, d]))
+
+// --- Archivos de operación ---
+const findRelacionesArchivo = new Relaciones(['archivo','usuario_registro'],['archivo','usuario_registro'],db.sequelize.models)
+const relArchivo = await findRelacionesArchivo.getRelaciones()
+const archivosOperacion = await db.sequelize.models.certificados_documentos_operaciones.findAll({
+        where: { id_certificado: { [db.Sequelize.Op.in]: idsPagina } },
+        include: relArchivo
+})
+const mapArchivosPorCertificado = new Map()
+for (const a of archivosOperacion) {
+        if (!mapArchivosPorCertificado.has(a.id_certificado)) {
+                mapArchivosPorCertificado.set(a.id_certificado, [])
+        }
+        mapArchivosPorCertificado.get(a.id_certificado).push(a)
+}
+
+
+
 		for(const registro of docs){
 			let operacion = registro.toJSON()
 			if(req.query.perfil  == 'all'){
-				let whereFind = {
+
+
+//SE QUITA LA RC
+/*				let whereFind = {
 					where:{
 						[db.Sequelize.Op.or]: {
 							id_certificado:operacion.id,
@@ -123,7 +269,16 @@ async function index(req, res) {
 					} else{
 						operacion.certificado = certificadoRc.certificado
 					}
+
 				}
+
+
+*/
+//SE QUITA LA RC
+
+/*SE DOCMENTA ESTO POR EL ATRIBUTO
+
+
 				const parametrosDetalles = [ 'atributo'  ]
 				const findRelaciones = new Relaciones(parametrosDetalles,parametrosDetalles,db.sequelize.models)
 				const relaciones = await findRelaciones.getRelaciones()
@@ -138,6 +293,17 @@ async function index(req, res) {
 				if(det_cer != null){
 					operacion.detalle_certificado = det_cer
 				}
+
+HASTA AQUI QUEDA COEMENTADO*/
+
+//SE SUSTITUYE POR ESTO
+const detalleCertificado = mapDetalleCertificadoPorId.get(operacion.id)
+                                if(detalleCertificado != null){
+                                        operacion.detalle_certificado = detalleCertificado
+                                }
+//HASTA AQUI
+
+
 				const idOficina = operacion.oficina_razon_social.id_oficina
 				const razonSocial = await db.sequelize.models.razones_sociales.findByPk(operacion.oficina_razon_social.id_razon_social);
 				if(razonSocial != null){
@@ -176,7 +342,16 @@ async function index(req, res) {
 					}else{
 						operacion.razon_social.validada = false
 					}
+
 				}
+
+
+
+
+
+/*SE COMENTA ESTE CODIGO PARA SUSTITUIRLO POR UNO NUEVO
+
+
 				operacion.factura = null
 				operacion.cxc = null
 				operacion.factura_pagada = null
@@ -208,6 +383,33 @@ async function index(req, res) {
 						}
 					}
 				}
+
+
+AQUI TERMINA EL CODIGO QUE COMENTAREMOS TEMPORAL*/
+
+operacion.factura = null
+                                operacion.cxc = null
+                                operacion.factura_pagada = null
+                                if(operacion.estatus === 'F'){
+                                        const facDetalle = mapFacturaDetallePorPedido.get(mapPedidoFacturaPorCertificado.get(operacion.id)?.id);
+                                        if(facDetalle !== undefined){
+                                                const factura = mapFacturaPorId.get(facDetalle.id_factura);
+                                                if(factura){
+                                                        operacion.factura = factura;
+                                                        const cxc = mapCxCPorFactura.get(factura.id);
+                                                        if(cxc){
+                                                                operacion.cxc = cxc;
+                                                                operacion.factura_pagada = parseFloat(cxc.saldo) == 0;
+                                                        }
+                                                }
+                                        }
+                                }
+
+
+
+
+/*COMENTAREMOS ESTE CODIGO TEMPORALMENTE PARA AGILIZAR LA CONSULTA
+
 				const oficinaCliente = await db.sequelize.models.oficinas_cliente.findOne({where:{id_oficina:idOficina, id_cliente: operacion.id_cliente}})
 				const findRelacionesMAO = new Relaciones(['agente_venta_1', 'agente_venta_2'],['agente_venta_1', 'agente_venta_2'],db.sequelize.models)
 				const relacionesMAO = await findRelacionesMAO.getRelaciones()
@@ -228,6 +430,33 @@ async function index(req, res) {
 				operacion.agente_venta_2 = marcaAgenteOficina.agente_venta_2
 				operacion.agente_operativo = marcaAgenteCliente.agente_operativo
 
+
+
+HASTA AQUI ESTÁ DOCUMENTADO EL CODIGO QUE OMITIREMOS TEMPORAL*/
+
+
+//AGREGAMOS ESTE CODIGO PARA SUSTITUIR EL ANTERIOR
+
+const oficinaCliente = mapOficinaCliente.get(`${idOficina}_${operacion.id_cliente}`)
+                                const marcaAgenteOficina = mapMarcaAgenteOficina.get(`${oficinaCliente.id}_${operacion.id_marca}`)
+                                let marcaAgenteCliente = mapMarcaAgenteCliente.get(`${operacion.id_cliente}_${operacion.id_marca}`)
+                                if(marcaAgenteCliente == null){
+                                        await db.sequelize.models.marca_agentes_clientes.create({
+                                                id_cliente: operacion.id_cliente,
+                                                id_marca: 1,
+                                                createdAt: moment().tz('America/Mexico_City'),
+                                                updatedAt: moment().tz('America/Mexico_City')
+                                        });
+                                        marcaAgenteCliente = await db.sequelize.models.marca_agentes_clientes.findOne({where:{id_cliente:operacion.id_cliente, id_marca: operacion.id_marca},include:relacionesMAC})
+                                }
+                                operacion.agente_venta_1 = marcaAgenteOficina.agente_venta_1
+                                operacion.agente_venta_2 = marcaAgenteOficina.agente_venta_2
+                                operacion.agente_operativo = marcaAgenteCliente.agente_operativo
+
+//HASTA AQUI TERMINA EL CODIGO QUE AGREGAMOS PARA SUSTITUIR EL ANTERIOR
+
+
+/*DESDE AQUI
 				const findRelacionesHistorico = new Relaciones([],[],db.sequelize.models)
 				const relacionesHistorico = await findRelacionesHistorico.getRelaciones()
 				var busquedaHistorico = {
@@ -242,11 +471,39 @@ async function index(req, res) {
 				operacion.usuario_modifico = null
 				if(historico.length > 0){
 					operacion.usuario_modifico = historico[0].usuario_registro
-				}
+		
+		}
+
+
+
+
+HASTA ACÁ*/
+
+//SE AGREGA ESTO
+const ultimoHistorico = mapUltimoHistoricoPorRegistro.get(operacion.id)
+                                operacion.usuario_modifico = ultimoHistorico ? ultimoHistorico.usuario_registro : null
+//HASTA AQUI
+
+
+/*SE DOCUMENTA ESTO DE DOCUMENTOS
 				const findRelacionesArchivo = new Relaciones(['archivo','usuario_registro'],['archivo','usuario_registro'],db.sequelize.models)
 				const relArchivo = await findRelacionesArchivo.getRelaciones()
 				operacion.archivos_operacion = await db.sequelize.models.certificados_documentos_operaciones.findAll({where:{id_certificado:operacion.id},include:relArchivo})
-				operacion.pedido_factura = await db.sequelize.models.pedidos_factura.findOne({where:{id_certificado:operacion.id}})
+				
+HASTA AQUI SE DOCUMENTA*/
+
+//SE AGREGA ESTE BLOQUE
+operacion.archivos_operacion = mapArchivosPorCertificado.get(operacion.id) ?? []
+//HASTA AQUI
+
+
+/*operacion.pedido_factura = await db.sequelize.models.pedidos_factura.findOne({where:{id_certificado:operacion.id}})*/
+
+//SE AGREGA ESTE PARA REEMPLAZAR EL ANTERIOR
+operacion.pedido_factura = mapPedidoFacturaPorCertificado.get(operacion.id) ?? null
+//TERMINA EL CODIGO QUE SE AGREGA
+
+
 				const idsProveedoresNoPermitidos = [6,7,8]
 				if(idsProveedoresNoPermitidos.includes(operacion.proveedor.id) && req.query.keepro != 0){
 					operacion.copy_and_edit = false
