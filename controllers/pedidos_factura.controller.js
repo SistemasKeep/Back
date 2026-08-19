@@ -33,7 +33,7 @@ async function index(req, res) {
 		var relaciones = []
 		if(perfilesValidos.includes(req.query.perfil)){
 			const parametrosRelaciones = {
-				all: [ 'certificado.marca', 'certificado.cliente', 'certificado.oficina_razon_social', 'servicios_ontrack.marca', 'servicios_ontrack.cliente', 'servicios_ontrack.oficina_razon_social']
+                                all: [ 'certificado.marca', 'certificado.cliente', 'certificado.moneda', 'certificado.oficina_razon_social.razon_social', 'servicios_ontrack.marca', 'servicios_ontrack.cliente', 'servicios_ontrack.moneda', 'servicios_ontrack.oficina_razon_social.razon_social']
 			}
 			const findRelaciones = new Relaciones(parametrosRelaciones[req.query.perfil],parametrosRelaciones[req.query.perfil],db.sequelize.models)
 			relaciones = await findRelaciones.getRelaciones()
