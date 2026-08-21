@@ -19,6 +19,7 @@ let usuarios = require('../../controllers/usuarios.controller');
 let estados = require('../../controllers/estados.controller');
 let ubicacionesBienes = require('../../controllers/ubicaciones_bienes.controller');
 let cfdi = require('../../controllers/cfdis.controller');
+let getTotales = require("../../controllers/get_totales.controller")
 
 api.get('/clientes', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'C'), validarPermisos.validarPermiso, apiKeyAuth.validarXApiKey, rutas.indexClientes);
 api.get('/oficinas', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'C'), validarPermisos.validarPermiso, apiKeyAuth.validarXApiKey, rutas.indexOficinas);
@@ -70,4 +71,7 @@ api.post('/previewPdf', token.validarToken, token.updateToken, apiKeyAuth.valida
 
 api.post('/guardarOperacionCotizacion', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'C'), validarPermisos.validarPermiso, apiKeyAuth.validarXApiKey, ApiKeePro.certificado, ApiKeePro.getDatosClienteDeMediador);
 api.post('/facturar/:id', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'C'), validarPermisos.validarPermiso, apiKeyAuth.validarXApiKey, ApiKeePro.getPedidoFactura, cfdi.timbrar)
+
+
+api.post('/getTotales', token.validarToken, token.updateToken, validarPermisos.addPermiso('CERTIFICADOS', 'C'), validarPermisos.validarPermiso, apiKeyAuth.validarXApiKey, ApiKeePro.setCotizador, getTotales.getTotales);
 module.exports = api;

@@ -16,6 +16,17 @@ async function getTotales(req, res) {
         if(totales !== undefined){
             if(totales.status === true){
                 totales.status = undefined
+                if(req.query.keepro === 3 ){
+                    const dataToReturn = {
+                        tarifaFinalCliente: totales.minimoVenta,
+                        minimoVenta: totales.minimoVenta,
+                        subTotal: totales.subTotal,
+                        montoIva: totales.montoIva,
+                        importe: totales.total
+                    }
+                    
+                    return res.status(200).send({ status: true, data: dataToReturn});
+                }
                 return res.status(200).send({ status: true, data: totales});
             } else{
                 return res.status(400).send(totales);

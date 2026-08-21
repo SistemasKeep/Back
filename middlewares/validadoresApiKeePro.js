@@ -441,6 +441,41 @@ class ApiKeePro{
         }
     }
 
+     static async setCotizador(req, res, next){
+        const camposObligatorios = [
+            "idEstadoOrigen",
+            "idRazonSocial",
+            "idRazonSocial",
+            "idEstadoDestino",
+            "idMoneda",
+            "idServicio",
+            "idBeneficiario",
+            "sumaAsegurada",
+        ]
+        for(const campoObligatorio of camposObligatorios){
+            if(req.body[campoObligatorio] === null || req.body[campoObligatorio] === undefined || req.body[campoObligatorio] === ""){
+                return res.status(400).send({status:false , msg: 'No se recibieron todos los parametros.', parametro:campoObligatorio});
+            }
+        }
+        req.body.keepro = 3
+        req.body.idOficinaProducto = req.body.idServicio
+        req.body.idServicio = undefined
+        const oficinaProducto = await db.sequelize.models.oficinas_productos.findByPk(req.body.idOficinaProducto)
+        if(oficinaProducto == null){
+            return res.status(400).send({ status: false, msg: `Registro con id: idServicio = ${req.body.idOficinaProducto} no encontrado`});
+        }
+        const producto = await db.sequelize.models.productos.findByPk(oficinaProducto.id_producto)
+        if(producto == null){
+            return res.status(400).send({ status: false, msg: `Registro con id: idServicio = ${req.body.idOficinaProducto} no válido`});
+        }
+        if((req.body.idTipoContenedor === null || req.body.idTipoContenedor === undefined || req.body.idTipoContenedor === "") && producto.id_tipo_cobertura == 2 ){
+                return res.status(400).send({status:false , msg: 'No se recibieron todos los parametros.', parametro:"idTipoContenedor"});
+        } else if((req.body.idCommodity === null || req.body.idCommodity === undefined || req.body.idCommodity === "") && producto.id_tipo_cobertura != 2){
+            return res.status(400).send({status:false , msg: 'No se recibieron todos los parametros.', parametro:"idCommodity"});
+        }
+        next();
+    }
+
 }
 
 module.exports = {
